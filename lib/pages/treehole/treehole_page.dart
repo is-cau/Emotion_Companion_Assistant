@@ -54,10 +54,17 @@ class TreeholePageState extends State<TreeholePage> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    // 1. 本地快速分析保存（即时持久化，兜底用）
-    final localRecord = _emotionService.analyze(text);
-    await _storageService.saveRecord(localRecord);
+    // 1. 先生成占位记录（"分析中..."），立即保存并刷新列表
+    final pendingId = DateTime.now().microsecondsSinceEpoch.toString();
+    final pendingRecord = EmotionRecord(
+      id: pendingId,
+      content: text,
+      dominantEmotion: '分析中...',
+      createdAt: DateTime.now(),
+    );
+    await _storageService.saveRecord(pendingRecord);
     _textController.clear();
+    await _loadRecords(); // 立即刷新，显示"分析中..."状态
 
     // 2. 显示加载弹窗（带X关闭按钮，可取消但后台继续分析）
     bool dialogCancelled = false;
@@ -100,54 +107,53 @@ class TreeholePageState extends State<TreeholePage> {
     final llmService = LlmService();
     final llmResult = await llmService.analyzeEmotion(text);
 
+    // 4. 构建最终记录：AI成功用AI结果，失败用本地兜底
+    final EmotionRecord finalRecord;
+    if (llmResult != null) {
+      finalRecord = EmotionRecord(
+        id: pendingId,
+        content: text,
+        sadness: (llmResult['sadness'] ?? 0.0).toDouble(),
+        anxiety: (llmResult['anxiety'] ?? 0.0).toDouble(),
+        anger: (llmResult['anger'] ?? 0.0).toDouble(),
+        loneliness: (llmResult['loneliness'] ?? 0.0).toDouble(),
+        happiness: (llmResult['happiness'] ?? 0.0).toDouble(),
+        calmness: (llmResult['calmness'] ?? 0.0).toDouble(),
+        suppression: (llmResult['suppression'] ?? 0.0).toDouble(),
+        dominantEmotion: llmResult['dominantEmotion'] ?? '平静',
+        createdAt: pendingRecord.createdAt,
+        interpretation: llmResult['interpretation'] ?? '',
+        suggestions: (llmResult['suggestions'] as List<dynamic>?)?.cast<String>() ?? [],
+      );
+    } else {
+      // AI失败，用本地关键词分析兜底
+      final localRecord = _emotionService.analyze(text);
+      finalRecord = EmotionRecord(
+        id: pendingId,
+        content: text,
+        sadness: localRecord.sadness,
+        anxiety: localRecord.anxiety,
+        anger: localRecord.anger,
+        loneliness: localRecord.loneliness,
+        happiness: localRecord.happiness,
+        calmness: localRecord.calmness,
+        suppression: localRecord.suppression,
+        dominantEmotion: localRecord.dominantEmotion,
+        createdAt: pendingRecord.createdAt,
+      );
+    }
+
+    // 5. 用最终结果替换占位记录，刷新列表
+    await _storageService.saveRecord(finalRecord);
+    await _loadRecords();
+
     if (dialogCancelled) {
-      // 用户已关弹窗 → 后台静默保存结果并刷新列表
-      if (llmResult != null) {
-        final enhancedRecord = EmotionRecord(
-          id: localRecord.id,
-          content: text,
-          sadness: (llmResult['sadness'] ?? 0.0).toDouble(),
-          anxiety: (llmResult['anxiety'] ?? 0.0).toDouble(),
-          anger: (llmResult['anger'] ?? 0.0).toDouble(),
-          loneliness: (llmResult['loneliness'] ?? 0.0).toDouble(),
-          happiness: (llmResult['happiness'] ?? 0.0).toDouble(),
-          calmness: (llmResult['calmness'] ?? 0.0).toDouble(),
-          suppression: (llmResult['suppression'] ?? 0.0).toDouble(),
-          dominantEmotion: llmResult['dominantEmotion'] ?? localRecord.dominantEmotion,
-          createdAt: localRecord.createdAt,
-          interpretation: llmResult['interpretation'] ?? '',
-          suggestions: (llmResult['suggestions'] as List<dynamic>?)?.cast<String>() ?? [],
-        );
-        await _storageService.saveRecord(enhancedRecord);
-        await _loadRecords();
-      }
+      // 用户已关弹窗 → 结果已静默更新到列表
     } else {
       // 弹窗仍在 → 关闭弹窗并跳转分析页
       if (mounted) Navigator.of(context).pop();
-      if (llmResult != null) {
-        final enhancedRecord = EmotionRecord(
-          id: localRecord.id,
-          content: text,
-          sadness: (llmResult['sadness'] ?? 0.0).toDouble(),
-          anxiety: (llmResult['anxiety'] ?? 0.0).toDouble(),
-          anger: (llmResult['anger'] ?? 0.0).toDouble(),
-          loneliness: (llmResult['loneliness'] ?? 0.0).toDouble(),
-          happiness: (llmResult['happiness'] ?? 0.0).toDouble(),
-          calmness: (llmResult['calmness'] ?? 0.0).toDouble(),
-          suppression: (llmResult['suppression'] ?? 0.0).toDouble(),
-          dominantEmotion: llmResult['dominantEmotion'] ?? localRecord.dominantEmotion,
-          createdAt: localRecord.createdAt,
-          interpretation: llmResult['interpretation'] ?? '',
-          suggestions: (llmResult['suggestions'] as List<dynamic>?)?.cast<String>() ?? [],
-        );
-        await _storageService.saveRecord(enhancedRecord);
-        await _loadRecords();
-        if (mounted) {
-          Get.toNamed(AppRoutes.analysis, arguments: {'recordId': enhancedRecord.id});
-        }
-      } else {
-        await _loadRecords();
-        if (mounted) Get.toNamed(AppRoutes.analysis);
+      if (mounted) {
+        Get.toNamed(AppRoutes.analysis, arguments: {'recordId': finalRecord.id});
       }
     }
   }
@@ -406,7 +412,10 @@ class TreeholePageState extends State<TreeholePage> {
       '开心': AppColors.calmGreen,
       '平静': AppColors.lightCyan,
       '压抑': AppColors.warmBeige,
+      '分析中...': AppColors.textHint,
     };
+
+    final isPending = record.dominantEmotion == '分析中...';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -428,13 +437,29 @@ class TreeholePageState extends State<TreeholePage> {
                   color: (emotionColors[record.dominantEmotion] ?? AppColors.hazeBlue).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
-                  record.dominantEmotion,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: emotionColors[record.dominantEmotion] ?? AppColors.hazeBlue,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isPending) ...[
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      record.dominantEmotion,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: emotionColors[record.dominantEmotion] ?? AppColors.hazeBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Row(
@@ -444,11 +469,13 @@ class TreeholePageState extends State<TreeholePage> {
                     _formatDate(record.createdAt),
                     style: TextStyle(fontSize: 11, color: AppColors.textHint),
                   ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => _deleteRecord(record.id),
-                    child: Icon(Icons.close, size: 16, color: AppColors.textHint.withValues(alpha: 0.6)),
-                  ),
+                  if (!isPending) ...[
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => _deleteRecord(record.id),
+                      child: Icon(Icons.close, size: 16, color: AppColors.textHint.withValues(alpha: 0.6)),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -458,7 +485,27 @@ class TreeholePageState extends State<TreeholePage> {
             record.content.length > 100 ? '${record.content.substring(0, 100)}……' : record.content,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          if (record.interpretation.isNotEmpty) ...[
+          if (isPending) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: AppColors.hazeBlue.withValues(alpha: 0.5),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '正在AI深度分析中，请稍候……',
+                  style: TextStyle(fontSize: 12, color: AppColors.textHint),
+                ),
+              ],
+            ),
+          ] else if (record.interpretation.isNotEmpty) ...[
             const SizedBox(height: 10),
             GestureDetector(
               onTap: () {

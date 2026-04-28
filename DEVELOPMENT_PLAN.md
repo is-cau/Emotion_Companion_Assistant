@@ -1,4 +1,4 @@
-# 情感分析小助手 - 开发步骤计划
+# 情感分析小助手 - 开发计划
 
 ## 项目概述
 一款轻量化治愈系心理健康情绪陪伴APP，主打：情感分析、匿名树洞倾诉、AI暖心安慰
@@ -7,60 +7,53 @@
 
 ## 第一阶段：技术选型与项目架构
 
-### 1.1 技术栈确定
+### 1.1 技术栈
 | 层级 | 技术选择 | 说明 |
 |------|----------|------|
-| 跨端框架 | **Flutter 3.41.7** | 全平台适配（Android/iOS/Windows/macOS/Linux/Web） |
+| 跨端框架 | **Flutter 3.41** | 全平台适配（Android/iOS/Windows/macOS/Linux/Web） |
 | 前端UI | Flutter Widget + Material3 | 莫兰迪配色，圆角卡片 |
-| 本地存储 | SharedPreferences + 加密（MD5） | 轻量级，本地加密存储 |
-| 状态管理 | GetX | 轻量，简洁 |
+| 本地存储 | SharedPreferences + MD5 加密 | 轻量级，本地加密存储 |
+| 状态管理 | GetX（主题） + GlobalKey（跨页同步） | 轻量，简洁 |
 | HTTP请求 | http ^1.6.0 | OpenAI格式API调用 |
-| **情感分析** | **本地关键词权重分析** | 免费，无需API，后续可接入huggingface中文预训练模型 |
-| **AI对话** | **OpenAI格式API（流式输出）** | 兼容所有OpenAI格式的大模型服务 |
-| 语音识别 | 可选暂不加 | 后续按需添加 SenseVoice/Whisper |
-
-**模型方案：**
-- 情感分析（当前）：本地关键词权重算法，识别20+细分情绪维度
-- 情感分析（升级）：`IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment` 或 `uer/roberta-base-finetuned-jd-binary-chinese`
-- AI对话：OpenAI兼容格式API，支持任意大模型（GPT/Qwen/DeepSeek/GLM等）
+| **情感分析** | **本地关键词权重 + 大模型深度分析** | 双重保障 |
+| **AI对话** | **OpenAI格式API（HTTP SSE流式输出）** | 兼容所有OpenAI格式的大模型服务 |
+| 语音识别 | 可选暂不加 | 后续按需添加 |
 
 ### 1.2 项目目录结构
 ```
 emotion_companion/
 ├── lib/
-│   ├── main.dart                    # 主入口 + 底部导航
+│   ├── main.dart                    # 主入口 + 底部导航（IndexedStack + GlobalKey同步）
 │   ├── app/
 │   │   ├── config/
 │   │   │   └── llm_config.dart      # 大模型API配置（base-url/key/model）
 │   │   ├── routes/
 │   │   │   └── app_routes.dart      # 路由配置
-│   │   └── themes/
-│   │       ├── app_colors.dart      # 莫兰迪配色定义
-│   │       └── app_theme.dart       # 明/暗主题配置
+│   │   ├── themes/
+│   │   │   ├── app_colors.dart      # 莫兰迪配色定义（含暗色）
+│   │   │   └── app_theme.dart       # 明/暗双主题（含input/elevatedButton/等全组件）
+│   │   └── app_controller.dart      # GetX全局状态（暗色模式响应式切换）
 │   ├── pages/
 │   │   ├── home/
-│   │   │   └── home_page.dart       # 首页（问候+倾诉按钮+情绪卡片）
+│   │   │   └── home_page.dart       # 首页（问候+情绪总览+波动图+快捷入口）
 │   │   ├── treehole/
-│   │   │   └── treehole_page.dart   # 情绪树洞（匿名输入+白噪音+日记）
+│   │   │   └── treehole_page.dart   # 情绪树洞（输入+白噪音+日记+密码锁定）
 │   │   ├── comfort/
-│   │   │   └── comfort_page.dart    # AI暖心安慰（大模型对话+流式输出）
+│   │   │   └── comfort_page.dart    # AI安慰（流式对话+对话历史+AI标题生成）
 │   │   ├── analysis/
-│   │   │   └── analysis_page.dart   # 情绪分析（雷达图+维度+建议）
+│   │   │   └── analysis_page.dart   # 情绪分析报告（雷达图+解读+建议）
 │   │   └── privacy/
-│   │       └── privacy_page.dart    # 隐私中心（锁定+清空+政策）
+│   │       └── privacy_page.dart    # 隐私中心（锁定/密码/暗色模式/清空）
 │   ├── widgets/
 │   │   └── emotion_radar.dart       # 情绪雷达图组件
 │   ├── services/
-│   │   ├── llm_service.dart         # 大模型API调用（OpenAI格式，流式+普通）
+│   │   ├── llm_service.dart         # 大模型API（流式SSE/普通/情绪分析/标题生成）
 │   │   ├── emotion_service.dart     # 本地情感分析（关键词权重算法）
 │   │   ├── ai_comfort_service.dart  # 本地预设安慰话术（降级备选）
-│   │   └── storage_service.dart     # 本地加密存储
+│   │   └── storage_service.dart     # 本地存储（记录/对话/密码/暗色模式）
 │   └── models/
-│       └── emotion_models.dart      # 数据模型
+│       └── emotion_models.dart      # EmotionRecord / ChatMessage / Conversation
 ├── assets/
-│   ├── images/
-│   ├── audio/
-│   └── icons/
 ├── pubspec.yaml
 └── test/
 ```
@@ -70,81 +63,82 @@ emotion_companion/
 ## 第二阶段：UI界面开发（已完成）
 
 ### 2.1 全局主题配置
-- [x] 莫兰迪低饱和度配色（雾霾蓝、柔粉、浅青、奶白、暖米、柔紫）
-- [x] 圆角卡片样式（borderRadius: 16-24）
-- [x] 护眼夜间模式（darkTheme已配置）
-- [x] Material3 设计规范
+- ✅ 莫兰迪低饱和度配色（雾霾蓝、柔粉、浅青、奶白、暖米、柔紫）
+- ✅ 圆角卡片样式（borderRadius: 16-24）
+- ✅ 护眼夜间模式（完整暗色主题，所有组件适配，GetX响应式切换）
+- ✅ Material3 设计规范
 
 ### 2.2 首页 (Home Page)
-- [x] 顶部暖心问候标语（根据时段自动切换）
-- [x] 一键「开始情绪倾诉」大按钮（渐变圆形+爱心图标）
-- [x] 今日情绪状态卡片
-- [x] 情绪波动柱状图
-- [x] 底部导航栏（首页/树洞/AI安慰/我的）
-- [x] 快捷功能入口（AI安慰/情绪分析/隐私中心）
+- ✅ 顶部暖心问候标语（根据时段自动切换，居中显示）
+- ✅ 今日情绪状态卡片（聚合当天所有日记的7维度平均分，无记录显示"未知"）
+- ✅ 情绪波动柱状图（相对日期：今天/昨天/周X）
+- ✅ 快捷功能入口（AI暖心安慰→切换到安慰Tab，保持同一对话实例）
 
 ### 2.3 情绪树洞页面 (Treehole Page)
-- [x] 匿名输入框（文字，支持多行）
-- [x] 隐私加密图标提示
-- [x] 白噪音开关（雨声/晚风/森林）
-- [x] 情绪日记列表
-- [x] 树洞锁定功能（密码保护）
+- ✅ 匿名多行文本输入框
+- ✅ 隐私加密图标提示
+- ✅ AI深度情绪分析弹窗（可取消X按钮，后台继续运行）
+- ✅ 情绪日记列表（情绪标签+时间+查看详细报告+删除）
+- ✅ 一键清空所有日记（浅红色醒目胶囊按钮）
+- ✅ 白噪音开关（雨声/晚风/森林）
+- ✅ 树洞密码锁定（首次锁定→设置密码→专属密码提示弹窗）
+- ✅ 锁定页面密码验证（错误提示SnackBar，不解锁）
+- ✅ 与隐私页锁定状态双向同步（切Tab时自动refreshData）
 - [ ] 语音输入按钮（后续添加）
 
 ### 2.4 AI暖心安慰页面 (Comfort Page)
-- [x] AI头像+渐变气泡
-- [x] 对话气泡列表（用户/AI双向）
-- [x] 输入框+发送按钮
-- [x] 情绪匹配标签
-- [x] 深呼吸引导弹窗
-- [x] 晚安语录弹窗
-- [x] 流式输出（逐字显示AI回复）
-- [x] 大模型/本地模式切换
-- [x] 大模型失败自动降级到本地话术
-- [x] 清空对话功能
-- [x] 输入中loading状态
+- ✅ HTTP SSE 流式输出（字词块智能分块，模拟人类打字节奏）
+- ✅ 打字光标闪烁特效（`▌`，530ms间隔）
+- ✅ 流式失败自动降级链：SSE → 普通模式 → 本地话术
+- ✅ 对话历史持久化（最多50个对话，SharedPreferences存储）
+- ✅ 新建/切换/删除对话（endDrawer侧边栏 + 顶部菜单）
+- ✅ AI自动生成对话标题（≤10字，首次交换后LLM生成）
+- ✅ 情感陪伴师角色系统提示词（温柔共情+8条行为准则）
+- ✅ 对话上下文记忆（最近20轮）
+- ✅ 深呼吸引导弹窗 + 晚安语录弹窗
 
-### 2.5 情感分析报告页面
-- [x] 情绪雷达图（7维度：悲伤/焦虑/愤怒/孤独/开心/平静/压抑）
-- [x] 情绪维度进度条（百分比展示）
-- [x] 情绪解读文案
-- [x] 舒缓建议卡片
-- [x] 近期情绪趋势图
+### 2.5 情绪分析报告页面
+- ✅ 情绪雷达图（7维度：悲伤/焦虑/愤怒/孤独/开心/平静/压抑）
+- ✅ 情绪维度进度条
+- ✅ AI情绪解读文案
+- ✅ 舒缓建议卡片
 
-### 2.6 我的隐私中心 (Privacy Page)
-- [x] 安全状态展示
-- [x] 树洞锁定开关
-- [x] 夜间护眼模式开关
-- [x] 一键清空所有记录
-- [x] 修改树洞密码
-- [x] 隐私政策说明（7条合规声明）
+### 2.6 隐私中心 (Privacy Page)
+- ✅ 安全状态展示
+- ✅ 树洞锁定开关（首次开启→设置密码→专属密码提示；关闭→验证密码）
+- ✅ 夜间护眼模式开关（全局响应式切换，持久化存储）
+- ✅ 一键清空所有记录
+- ✅ 修改树洞密码（无旧密码直接设置→专属提示；有旧密码先验证→再设新密码）
+- ✅ 隐私政策说明（7条合规声明）
 
 ---
 
 ## 第三阶段：核心功能实现
 
 ### 3.1 情感分析功能
-- [x] 本地关键词权重算法（40+情绪关键词）
-- [x] 7维度情绪评分（悲伤/焦虑/愤怒/孤独/开心/平静/压抑）
-- [x] 主导情绪识别
-- [x] 情绪雷达图渲染
-- [x] 情绪日记自动保存
-- [ ] 接入huggingface中文预训练模型（升级）
+- ✅ 本地关键词权重算法（40+情绪关键词，即时兜底）
+- ✅ 大模型深度分析（7维度评分+解读+建议，结构化JSON返回）
+- ✅ 主导情绪识别
+- ✅ 情绪雷达图渲染
+- ✅ 情绪日记自动保存（upsert去重）
+- ✅ 今日情绪聚合（多日记加权平均）
+- [ ] 接入huggingface中文预训练模型（升级备选）
 
 ### 3.2 AI对话功能
-- [x] OpenAI格式API调用（`/chat/completions`）
-- [x] 流式输出（SSE，逐字显示）
-- [x] 普通模式（非流式备选）
-- [x] 系统提示词（情感陪伴师角色定义）
-- [x] 对话上下文记忆（最近20轮）
-- [x] 本地预设话术降级（大模型不可用时自动切换）
-- [x] 错误处理（网络/格式/认证异常）
-- [x] 大模型/本地模式手动切换
+- ✅ OpenAI格式API调用（`/chat/completions`）
+- ✅ HTTP SSE 流式输出（`http.Client().send()` + `stream: true`）
+- ✅ 字词块分段显示（45ms定时器 + 标点感知分块）
+- ✅ 流式失败自动降级到普通模式
+- ✅ 系统提示词（情感陪伴师角色定义）
+- ✅ 对话上下文记忆（最近20轮）
+- ✅ 对话历史系统（新建/切换/删除，AI自动生成标题）
+- ✅ 本地预设话术降级（大模型不可用时自动切换）
+- ✅ 错误处理（网络/格式/认证异常，详细错误信息）
 
 ### 3.3 大模型API配置
-- [x] 配置文件 `lib/app/config/llm_config.dart`
-- [x] 支持任意OpenAI兼容格式API
-- [x] 可配置项：baseUrl / apiKey / model / maxTokens / temperature
+- ✅ 配置文件 `lib/app/config/llm_config.dart`
+- ✅ 支持任意OpenAI兼容格式API
+- ✅ 可配置项：baseUrl / apiKey / model / maxTokens / temperature
 
 **配置示例：**
 ```dart
@@ -154,13 +148,21 @@ static const String apiKey = 'sk-xxxxxxxxxxxxxxxx';
 static const String model = 'gpt-3.5-turbo';               // 或 qwen-turbo / deepseek-chat 等
 ```
 
-### 3.4 本地存储加密
-- [x] SharedPreferences本地存储
-- [x] MD5密码加密
-- [x] 情绪日记CRUD
-- [x] 最多保留200条记录
+### 3.4 本地存储
+- ✅ SharedPreferences本地存储
+- ✅ MD5密码加密
+- ✅ 情绪日记CRUD（upsert去重，最多200条）
+- ✅ 对话管理（最多50个对话）
+- ✅ 暗色模式持久化
 
-### 3.5 语音识别功能（后续添加）
+### 3.5 跨页面数据同步
+- ✅ GlobalKey 模式（HomePageState / TreeholePageState / PrivacyPageState）
+- ✅ 切Tab时自动刷新（refreshData）
+- ✅ 首页 ↔ 树洞页：情绪记录双向同步
+- ✅ 树洞页 ↔ 隐私页：锁定状态双向同步
+- ✅ 首页 ↔ 安慰页：同一对话实例（onNavigateToComfort回调）
+
+### 3.6 语音识别功能（后续添加）
 - [ ] 实时语音转文字
 - [ ] 长时间录音支持
 
@@ -169,131 +171,74 @@ static const String model = 'gpt-3.5-turbo';               // 或 qwen-turbo / d
 ## 启动与运行指南
 
 ### 前置条件
-- Flutter SDK 已克隆到项目目录 `flutter/`
+- Flutter SDK 已安装
 - 已执行 `flutter pub get` 安装依赖
 - 已在 `lib/app/config/llm_config.dart` 配置大模型API（可选，未配置时使用本地模式）
 
-### Windows 系统启动
-
-```powershell
-# 1. 进入项目目录
-cd D:\PythonCode\情感分析小助手\emotion_companion
-
-# 2. 启动 Windows 桌面版
-D:\PythonCode\情感分析小助手\flutter\bin\flutter.bat run -d windows
-
-# 3. 首次构建较慢（约1-2分钟），后续启动秒开
-```
-
-**Windows 运行时快捷键：**
-| 按键 | 功能 |
-|------|------|
-| `r` | 热重载（代码改动后按r即时生效，保留状态） |
-| `R` | 热重启（完全重启APP，清空状态） |
-| `q` | 退出APP |
-| `d` | 分离（APP继续运行，终端可退出） |
-| `h` | 列出所有可用命令 |
-
-**Windows 关闭方式：**
-- 方式1：终端按 `q` 退出
-- 方式2：直接关闭APP窗口
-- 方式3：终端按 `Ctrl+C` 强制终止
-
-### macOS 系统启动
-
+### 运行
 ```bash
-# 1. 进入项目目录
-cd /path/to/emotion_companion
+# Windows
+flutter run -d windows
 
-# 2. 确保 Flutter 在 PATH 中（如未添加）
-export PATH="$PATH:/path/to/flutter/bin"
-
-# 3. 启动 macOS 桌面版
+# macOS
 flutter run -d macos
 
-# 4. 首次构建较慢（需Xcode），后续启动秒开
-```
-
-**macOS 前置要求：**
-- 已安装 Xcode（App Store 下载）
-- 已安装 CocoaPods：`sudo gem install cocoapods`
-- 首次运行需授权：系统偏好设置 → 安全性与隐私 → 允许运行
-
-**macOS 运行时快捷键：**
-| 按键 | 功能 |
-|------|------|
-| `r` | 热重载 |
-| `R` | 热重启 |
-| `q` | 退出APP |
-| `d` | 分离 |
-| `h` | 列出所有可用命令 |
-
-**macOS 关闭方式：**
-- 方式1：终端按 `q` 退出
-- 方式2：`Cmd+Q` 关闭APP窗口
-- 方式3：终端按 `Ctrl+C` 强制终止
-
-### 其他平台启动
-
-```bash
-# Chrome 浏览器版
+# Chrome
 flutter run -d chrome
 
-# Android 真机/模拟器（需连接设备或启动模拟器）
+# Android
 flutter run -d android
-
-# iOS 模拟器（仅macOS，需Xcode）
-flutter run -d ios
-
-# Linux 桌面版
-flutter run -d linux
 
 # 查看所有可用设备
 flutter devices
 ```
 
+### 运行时快捷键
+| 按键 | 功能 |
+|------|------|
+| `r` | 热重载（代码改动即时生效） |
+| `R` | 热重启（完全重启，清空状态） |
+| `q` | 退出APP |
+| `h` | 列出所有可用命令 |
+
 ### 打包发布
-
 ```bash
-# Windows 打包（生成 exe）
+# Windows
 flutter build windows
-# 产物位置：build/windows/x64/runner/Release/
 
-# macOS 打包（生成 app）
+# macOS
 flutter build macos
-# 产物位置：build/macos/Build/Products/Release/
 
-# Android APK 打包
+# Android APK
 flutter build apk --release
-# 产物位置：build/app/outputs/flutter-apk/app-release.apk
 
 # Android App Bundle（上架Google Play）
 flutter build appbundle --release
 
-# iOS IPA 打包（仅macOS）
+# iOS（仅macOS，需Xcode）
 flutter build ios --release
+
+# Web
+flutter build web
 ```
 
 ---
 
-## 第四阶段：上线准备
+## 第四阶段：待完成
 
-### 4.1 功能测试
-- [x] 文本情感分析测试（本地关键词模式）
-- [ ] 大模型对话体验测试
-- [ ] 隐私功能测试（锁定/清空/密码）
-- [ ] 流式输出稳定性测试
+### 4.1 功能增强
+- [ ] 语音识别输入
+- [ ] 接入huggingface中文预训练模型
+- [ ] 白噪音实际音频播放
 
 ### 4.2 性能优化
 - [ ] 启动速度优化
 - [ ] 内存占用优化
-- [ ] 电池消耗优化
 
-### 4.3 各平台打包
-- [ ] 安卓APK打包
-- [ ] iOS IPA打包（需Mac）
-- [ ] Windows exe打包
-- [ ] macOS app打包
+### 4.3 测试
+- [ ] 大模型对话体验测试
+- [ ] 隐私功能测试（锁定/清空/密码）
+- [ ] 流式输出稳定性测试
 
 ---
 
@@ -305,10 +250,11 @@ flutter build ios --release
 第3优先：情绪树洞UI + 文字输入 ✅
 第4优先：AI安慰UI + 大模型对话 ✅
 第5优先：情感分析算法 ✅
-第6优先：大模型API接入（OpenAI格式，流式输出） ✅
-第7优先：数据存储加密 ✅
-第8优先：语音识别集成（待定）
-第9优先：完整测试 + 打包
+第6优先：大模型API接入（流式SSE） ✅
+第7优先：数据存储加密 + 对话历史 ✅
+第8优先：跨页面同步 + 暗色模式完善 ✅
+第9优先：语音识别集成（待定）
+第10优先：完整测试 + 打包
 ```
 
 ---

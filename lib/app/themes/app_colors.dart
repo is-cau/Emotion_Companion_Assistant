@@ -26,5 +26,5 @@ class AppColors {
   static const Color darkBackground = Color(0xFF1A1A2E);
   static const Color darkCard = Color(0xFF252540);
   static const Color darkTextPrimary = Color(0xFFE0D8D0);
-  static const Color darkTextSecondary = Color(0xFF9A90A0);
+  static const Color darkTextSecondary = Color(0xFFB8B0B8);
 }

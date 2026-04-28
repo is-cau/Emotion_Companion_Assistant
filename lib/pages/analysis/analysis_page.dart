@@ -28,13 +28,18 @@ class _AnalysisPageState extends State<AnalysisPage> {
     if (mounted) {
       setState(() {
         _records = records;
-        // 从路由参数获取指定记录ID，否则使用最新记录
+        // 从路由参数获取指定记录：优先使用传入的完整记录对象，其次是recordId，最后取最新记录
         final args = Get.arguments as Map<String, dynamic>?;
-        final recordId = args?['recordId'] as String?;
-        if (recordId != null) {
-          _targetRecord = records.where((r) => r.id == recordId).firstOrNull ?? records.firstOrNull;
+        final passedRecord = args?['record'] as EmotionRecord?;
+        if (passedRecord != null) {
+          _targetRecord = passedRecord;
         } else {
-          _targetRecord = records.firstOrNull;
+          final recordId = args?['recordId'] as String?;
+          if (recordId != null) {
+            _targetRecord = records.where((r) => r.id == recordId).firstOrNull ?? records.firstOrNull;
+          } else {
+            _targetRecord = records.firstOrNull;
+          }
         }
       });
     }

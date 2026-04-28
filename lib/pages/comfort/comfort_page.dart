@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../app/themes/app_colors.dart';
 import '../../app/config/llm_config.dart';
 import '../../services/emotion_service.dart';
@@ -55,6 +56,7 @@ class _ComfortPageState extends State<ComfortPage> {
       if (_currentConversation != null) {
         _restoreMessages();
         _titleGenerated = _currentConversation!.title != '新对话';
+        if (mounted) setState(() {});
         return;
       }
     }
@@ -66,6 +68,7 @@ class _ComfortPageState extends State<ComfortPage> {
     } else {
       _addWelcomeMessage();
     }
+    if (mounted) setState(() {});
   }
 
   void _restoreMessages() {
@@ -509,6 +512,10 @@ class _ComfortPageState extends State<ComfortPage> {
                         keyboardType: TextInputType.multiline,
                         enabled: !_isLoading,
                         decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkBackground
+                              : AppColors.milkWhite,
                           hintText: _isLoading ? 'AI正在思考……' : '说说你的心事……',
                           suffixIcon: IconButton(
                             icon: _isLoading
@@ -679,13 +686,58 @@ class _ComfortPageState extends State<ComfortPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    msg.content.isEmpty ? '……' : msg.content,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      height: 1.7,
-                      color: msg.isError ? AppColors.softPink : null,
+                  if (msg.content.isEmpty)
+                    Text('……', style: Theme.of(context).textTheme.bodyMedium)
+                  else if (msg.isStreaming)
+                    Text(
+                      msg.content,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.7),
+                    )
+                  else
+                    MarkdownBody(
+                      data: msg.content,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.7,
+                          color: msg.isError ? AppColors.softPink : null,
+                        ),
+                        h1: Theme.of(context).textTheme.titleLarge,
+                        h2: Theme.of(context).textTheme.titleMedium,
+                        h3: Theme.of(context).textTheme.titleSmall,
+                        strong: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        em: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontStyle: FontStyle.italic,
+                        ),
+                        code: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 13,
+                          backgroundColor: AppColors.hazeBlue.withValues(alpha: 0.1),
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: AppColors.hazeBlue.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.divider, width: 0.5),
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: AppColors.hazeBlue.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border(left: BorderSide(color: AppColors.hazeBlue, width: 3)),
+                        ),
+                        horizontalRuleDecoration: BoxDecoration(
+                          border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+                        ),
+                        listBullet: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.7,
+                        ),
+                        tableHead: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        tableBody: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     ),
-                  ),
                   if (msg.isStreaming) ...[
                     const SizedBox(height: 6),
                     _buildTypingIndicator(),

@@ -6,6 +6,7 @@ import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
 import '../../app/routes/app_routes.dart';
 import '../../widgets/emotion_radar.dart';
+import '../../widgets/heartbeat_breath_button.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onNavigateToComfort;
@@ -76,7 +77,8 @@ class HomePageState extends State<HomePage> {
     final todayRecords = _records.where((r) =>
       r.createdAt.year == DateTime.now().year &&
       r.createdAt.month == DateTime.now().month &&
-      r.createdAt.day == DateTime.now().day
+      r.createdAt.day == DateTime.now().day &&
+      r.dominantEmotion != '分析中...'  // 过滤占位记录
     ).toList();
 
     if (todayRecords.isEmpty) return null;
@@ -117,7 +119,8 @@ class HomePageState extends State<HomePage> {
     return _records.where((r) =>
       r.createdAt.year == DateTime.now().year &&
       r.createdAt.month == DateTime.now().month &&
-      r.createdAt.day == DateTime.now().day
+      r.createdAt.day == DateTime.now().day &&
+      r.dominantEmotion != '分析中...'
     ).length;
   }
 
@@ -155,46 +158,9 @@ class HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 32),
 
-              // 一键倾诉按钮
-              GestureDetector(
+              // 一键倾诉按钮（呼吸粒子效果）
+              HeartbeatBreathButton(
                 onTap: () => Get.toNamed(AppRoutes.treehole),
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.hazeBlue.withOpacity(0.8),
-                        AppColors.softPink.withOpacity(0.6),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.hazeBlue.withOpacity(0.3),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.favorite, color: Colors.white, size: 36),
-                      const SizedBox(height: 8),
-                      Text(
-                        '开始情绪倾诉',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
               const SizedBox(height: 40),
 
@@ -215,7 +181,13 @@ class HomePageState extends State<HomePage> {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             GestureDetector(
-                              onTap: () => Get.toNamed(AppRoutes.analysis),
+                              onTap: () {
+                                if (todayAggregated != null) {
+                                  Get.toNamed(AppRoutes.analysis, arguments: {'record': todayAggregated});
+                                } else {
+                                  Get.toNamed(AppRoutes.analysis);
+                                }
+                              },
                               child: Text(
                                 '查看详情 →',
                                 style: TextStyle(
