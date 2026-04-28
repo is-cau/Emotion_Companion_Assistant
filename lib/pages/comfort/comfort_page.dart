@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:record/record.dart';
 import '../../app/themes/app_colors.dart';
 import '../../app/config/llm_config.dart';
 import '../../services/emotion_service.dart';
 import '../../services/llm_service.dart';
 import '../../services/ai_comfort_service.dart';
+import '../../services/speech_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
 
@@ -36,6 +40,15 @@ class _ComfortPageState extends State<ComfortPage> {
   int _streamDisplayPos = 0;
   bool _streamEnded = false;
   bool _cursorVisible = true;
+
+  // 语音输入
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+
+  // 语音朗读
+  final AudioPlayer _ttsPlayer = AudioPlayer();
+  final SpeechService _speechService = SpeechService();
+  String? _playingMessageIndex; // 正在朗读的消息索引
 
   // 对话管理
   List<Conversation> _conversations = [];
@@ -146,6 +159,8 @@ class _ComfortPageState extends State<ComfortPage> {
     _typeTimer?.cancel();
     _streamDisplayTimer?.cancel();
     _cursorBlinkTimer?.cancel();
+    _audioRecorder.dispose();
+    _ttsPlayer.dispose();
     _saveCurrentConversation(); // fire-and-forget
     super.dispose();
   }
@@ -346,6 +361,167 @@ class _ComfortPageState extends State<ComfortPage> {
     });
   }
 
+  /// 切换录音状态
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      await _stopRecording();
+    } else {
+      await _startRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      final hasPermission = await _audioRecorder.hasPermission();
+      if (!hasPermission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('请先允许麦克风权限'),
+              backgroundColor: AppColors.softOrange,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+        return;
+      }
+      await _audioRecorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+        path: '${Directory.systemTemp.path}/recording_${DateTime.now().microsecondsSinceEpoch}.wav',
+      );
+      setState(() => _isRecording = true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('录音启动失败: $e'),
+            backgroundColor: AppColors.softPink,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      final path = await _audioRecorder.stop();
+      setState(() => _isRecording = false);
+      if (path == null) return;
+
+      // 显示识别中状态
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                SizedBox(
+                  width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+                SizedBox(width: 8),
+                Text('正在识别语音……'),
+              ],
+            ),
+            backgroundColor: AppColors.hazeBlue,
+            duration: const Duration(seconds: 10),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+
+      final text = await _speechService.speechToText(path!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (text != null && text.isNotEmpty) {
+          _textController.text = text;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('识别结果: $text'),
+              backgroundColor: AppColors.calmGreen,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('语音识别失败，请重试或手动输入'),
+              backgroundColor: AppColors.softOrange,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isRecording = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('识别出错: $e'),
+            backgroundColor: AppColors.softPink,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 朗读AI消息
+  Future<void> _speakMessage(int index, String text) async {
+    // 如果正在朗读同一条消息，停止
+    if (_playingMessageIndex == '$index') {
+      await _ttsPlayer.stop();
+      setState(() => _playingMessageIndex = null);
+      return;
+    }
+
+    // 停止当前播放
+    await _ttsPlayer.stop();
+
+    // 去除 Markdown 符号，保留纯文本
+    final plainText = text
+        .replaceAll(RegExp(r'[#*>`~_\[\]|]'), '')
+        .replaceAll(RegExp(r'\n{2,}'), '，')
+        .replaceAll('\n', '，')
+        .replaceAll('---', '，');
+
+    if (plainText.trim().isEmpty) return;
+
+    setState(() => _playingMessageIndex = '$index');
+
+    final audioPath = await _speechService.textToSpeech(plainText);
+    if (audioPath != null && mounted) {
+      await _ttsPlayer.play(DeviceFileSource(audioPath));
+      _ttsPlayer.onPlayerComplete.listen((_) {
+        if (mounted) setState(() => _playingMessageIndex = null);
+      });
+    } else {
+      if (mounted) {
+        setState(() => _playingMessageIndex = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('语音合成失败，请检查API配置'),
+            backgroundColor: AppColors.softOrange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -487,7 +663,7 @@ class _ComfortPageState extends State<ComfortPage> {
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final msg = _messages[index];
-                return _buildMessage(msg);
+                return _buildMessage(msg, index);
               },
             ),
           ),
@@ -503,6 +679,31 @@ class _ComfortPageState extends State<ComfortPage> {
               top: false,
               child: Row(
                 children: [
+                  // 语音输入按钮
+                  GestureDetector(
+                    onTap: _toggleRecording,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isRecording
+                            ? AppColors.softPink.withValues(alpha: 0.15)
+                            : AppColors.hazeBlue.withValues(alpha: 0.08),
+                        border: Border.all(
+                          color: _isRecording ? AppColors.softPink : AppColors.hazeBlue.withValues(alpha: 0.3),
+                          width: _isRecording ? 2 : 1,
+                        ),
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.mic : Icons.mic_outlined,
+                        color: _isRecording ? AppColors.softPink : AppColors.hazeBlue,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       constraints: const BoxConstraints(maxHeight: 100),
@@ -516,7 +717,11 @@ class _ComfortPageState extends State<ComfortPage> {
                           fillColor: Theme.of(context).brightness == Brightness.dark
                               ? AppColors.darkBackground
                               : AppColors.milkWhite,
-                          hintText: _isLoading ? 'AI正在思考……' : '说说你的心事……',
+                          hintText: _isLoading
+                              ? 'AI正在思考……'
+                              : _isRecording
+                                  ? '正在聆听……'
+                                  : '说说你的心事……',
                           suffixIcon: IconButton(
                             icon: _isLoading
                                 ? SizedBox(
@@ -618,7 +823,7 @@ class _ComfortPageState extends State<ComfortPage> {
     );
   }
 
-  Widget _buildMessage(_ChatBubble msg) {
+  Widget _buildMessage(_ChatBubble msg, int index) {
     if (msg.isUser) {
       return Container(
         margin: const EdgeInsets.only(bottom: 16, left: 40),
@@ -738,6 +943,47 @@ class _ComfortPageState extends State<ComfortPage> {
                         tableBody: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
+                  // AI消息朗读按钮（非流式、非空）
+                  if (!msg.isStreaming && msg.content.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: _isLoading ? null : () => _speakMessage(index, msg.content),
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _playingMessageIndex == '$index'
+                                  ? AppColors.hazeBlue.withValues(alpha: 0.15)
+                                  : AppColors.textHint.withValues(alpha: 0.08),
+                            ),
+                            child: Icon(
+                              _playingMessageIndex == '$index'
+                                  ? Icons.volume_up
+                                  : Icons.volume_up_outlined,
+                              size: 16,
+                              color: _playingMessageIndex == '$index'
+                                  ? AppColors.hazeBlue
+                                  : AppColors.textHint,
+                            ),
+                          ),
+                        ),
+                        if (_playingMessageIndex == '$index') ...[
+                          const SizedBox(width: 6),
+                          SizedBox(
+                            width: 14, height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: AppColors.hazeBlue.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                   if (msg.isStreaming) ...[
                     const SizedBox(height: 6),
                     _buildTypingIndicator(),

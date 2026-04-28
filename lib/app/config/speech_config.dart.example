@@ -1,0 +1,42 @@
+/// 火山引擎语音服务配置
+/// 请在此处填写你购买的语音API信息
+/*class SpeechConfig {
+  /// ========== 必填 ==========
+
+  /// 火山引擎应用 ID (App ID)
+  static const String appId = 'api-key-xxxxxxxxxxxxxx';
+
+  /// 火山引擎访问令牌 (Access Token)
+  static const String accessToken = '5de62ee2-xxxxxxxxxxxxxx';
+
+  /// ========== 可选 ==========
+
+  /// TTS 音色类型
+  /// 常见音色:
+  ///   zh_female_qingxin  - 女声·清新
+  ///   zh_female_tianmei  - 女声·甜美
+  ///   zh_male_wenrou     - 男声·温柔
+  ///   zh_male_qingse     - 男声·青涩
+  /// 完整音色列表见火山引擎文档
+  static const String ttsVoiceType = 'zh_female_qingxin';
+
+  /// TTS 语速 (0.5-2.0, 默认1.0)
+  static const double ttsSpeed = 1.0;
+
+  /// TTS 音量 (0.5-2.0, 默认1.0)
+  static const double ttsVolume = 1.0;
+
+  /// TTS 音高 (0.5-2.0, 默认1.0)
+  static const double ttsPitch = 1.0;
+
+  /// TTS API 地址
+  static const String ttsBaseUrl = 'https://openspeech.bytedance.com/api/v1/tts';
+
+  /// ASR 语音识别 API 地址
+  static const String asrBaseUrl = 'https://openspeech.bytedance.com/api/v1/asr';
+
+  /// 语音识别资源类型 (根据购买的服务填写)
+  /// 常见: volc.bigasr.sauc.duration 或 volc.openspeech.asr
+  static const String asrResourceId = 'volc.bigasr.sauc.duration';
+}
+*/

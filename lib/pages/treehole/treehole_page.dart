@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../app/themes/app_colors.dart';
 import '../../services/emotion_service.dart';
 import '../../services/llm_service.dart';
@@ -22,16 +23,22 @@ class TreeholePageState extends State<TreeholePage> {
   bool _isLocked = false;
   bool _showPinDialog = false;
 
-  // 白噪音状态
-  bool _rainPlaying = false;
-  bool _windPlaying = false;
-  bool _forestPlaying = false;
+  // 白噪音
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  String? _currentNoise; // 'rain', 'wind', 'stream' 或 null
 
   @override
   void initState() {
     super.initState();
     _checkLock();
     _loadRecords();
+    _audioPlayer.setReleaseMode(ReleaseMode.loop);
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   Future<void> _checkLock() async {
@@ -232,17 +239,11 @@ class TreeholePageState extends State<TreeholePage> {
               children: [
                 Text('白噪音', style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(width: 12),
-                _buildNoiseChip('雨声', Icons.water_drop_outlined, _rainPlaying, () {
-                  setState(() => _rainPlaying = !_rainPlaying);
-                }),
+                _buildNoiseChip('小雨', Icons.water_drop_outlined, 'rain'),
                 const SizedBox(width: 8),
-                _buildNoiseChip('晚风', Icons.air, _windPlaying, () {
-                  setState(() => _windPlaying = !_windPlaying);
-                }),
+                _buildNoiseChip('晚风', Icons.air, 'wind'),
                 const SizedBox(width: 8),
-                _buildNoiseChip('森林', Icons.forest_outlined, _forestPlaying, () {
-                  setState(() => _forestPlaying = !_forestPlaying);
-                }),
+                _buildNoiseChip('溪流', Icons.waves_outlined, 'stream'),
               ],
             ),
           ),
@@ -372,9 +373,26 @@ class TreeholePageState extends State<TreeholePage> {
     );
   }
 
-  Widget _buildNoiseChip(String label, IconData icon, bool isActive, VoidCallback onTap) {
+  void _toggleNoise(String key) async {
+    if (_currentNoise == key) {
+      await _audioPlayer.stop();
+      setState(() => _currentNoise = null);
+    } else {
+      await _audioPlayer.stop();
+      final assetMap = {
+        'rain': 'audio/rain.mp3',
+        'wind': 'audio/night_wind.mp3',
+        'stream': 'audio/stream.mp3',
+      };
+      await _audioPlayer.play(AssetSource(assetMap[key]!));
+      setState(() => _currentNoise = key);
+    }
+  }
+
+  Widget _buildNoiseChip(String label, IconData icon, String key) {
+    final isActive = _currentNoise == key;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => _toggleNoise(key),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
