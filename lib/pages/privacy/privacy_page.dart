@@ -110,9 +110,38 @@ class PrivacyPageState extends State<PrivacyPage> {
                       title: '夜间护眼模式',
                       subtitle: '降低屏幕亮度，保护眼睛',
                       value: _darkMode,
-                      onChanged: (val) {
+                      onChanged: (val) async {
+                        // 先只切换主题，不切换桌面图标
                         setState(() => _darkMode = val);
                         _appController.toggleDarkMode(val);
+
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: const Text('温馨提示'),
+                            content: const Text('桌面图标已更换，点击确定退出应用后生效。'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('取消'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text('确定', style: TextStyle(color: AppColors.hazeBlue)),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (ok == true) {
+                          _appController.switchIconAndExit(val);
+                        } else {
+                          // 用户取消，恢复主题
+                          setState(() => _darkMode = !val);
+                          _appController.toggleDarkMode(!val);
+                        }
                       },
                     ),
                   ],
