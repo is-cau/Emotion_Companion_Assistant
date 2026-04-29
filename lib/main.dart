@@ -37,7 +37,11 @@ class _EmotionCompanionAppState extends State<EmotionCompanionApp> {
           darkTheme: AppTheme.darkTheme,
           themeMode: controller.isDarkMode.value ? ThemeMode.dark : ThemeMode.light,
           home: _showSplash
-              ? AppSplash(onFinished: () => setState(() => _showSplash = false))
+              ? AppSplash(
+                  appInit: controller.ready,
+                  isDarkMode: controller.isDarkMode.value,
+                  onFinished: () => setState(() => _showSplash = false),
+                )
               : const MainNavigation(),
           getPages: AppRoutes.routes,
         ));

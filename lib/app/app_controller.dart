@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../services/storage_service.dart';
@@ -7,10 +8,20 @@ class AppController extends GetxController {
   final StorageService _storage = StorageService();
   var isDarkMode = false.obs;
 
+  final Completer<void> _readyCompleter = Completer<void>();
+  Future<void> get ready => _readyCompleter.future;
+
   @override
   void onInit() {
     super.onInit();
-    _loadDarkMode();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadDarkMode();
+    if (!_readyCompleter.isCompleted) {
+      _readyCompleter.complete();
+    }
   }
 
   Future<void> _loadDarkMode() async {

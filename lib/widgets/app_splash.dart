@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import '../app/themes/app_colors.dart';
 
 class AppSplash extends StatefulWidget {
+  final Future<void> appInit;
   final VoidCallback onFinished;
+  final bool isDarkMode;
 
-  const AppSplash({super.key, required this.onFinished});
+  const AppSplash({
+    super.key,
+    required this.appInit,
+    required this.onFinished,
+    required this.isDarkMode,
+  });
 
   @override
   State<AppSplash> createState() => _AppSplashState();
@@ -15,6 +22,9 @@ class _AppSplashState extends State<AppSplash> with SingleTickerProviderStateMix
   late final Animation<double> _fadeIn;
   late final Animation<double> _scale;
   late final Animation<double> _float;
+
+  bool _initDone = false;
+  bool _animDone = false;
 
   @override
   void initState() {
@@ -43,11 +53,25 @@ class _AppSplashState extends State<AppSplash> with SingleTickerProviderStateMix
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) widget.onFinished();
-        });
+        _animDone = true;
+        _tryFinish();
       }
     });
+
+    widget.appInit.then((_) {
+      if (mounted) {
+        _initDone = true;
+        _tryFinish();
+      }
+    });
+  }
+
+  void _tryFinish() {
+    if (_animDone && _initDone) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) widget.onFinished();
+      });
+    }
   }
 
   @override
@@ -58,29 +82,27 @@ class _AppSplashState extends State<AppSplash> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final dark = widget.isDarkMode;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFF5F0EB),
-                Color(0xFFF0E8E0),
-                Color(0xFFEEE5DA),
-              ],
+              colors: dark
+                  ? const [Color(0xFF1A1A2E), Color(0xFF162038), Color(0xFF131A2E)]
+                  : const [Color(0xFFF5F0EB), Color(0xFFF0E8E0), Color(0xFFEEE5DA)],
             ),
           ),
           child: Stack(
             children: [
-              _buildFloatingCircles(),
+              _buildFloatingCircles(dark),
               Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Animated icon
                     Transform.scale(
                       scale: _scale.value,
                       child: Opacity(
@@ -89,37 +111,41 @@ class _AppSplashState extends State<AppSplash> with SingleTickerProviderStateMix
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha:0.9),
+                            borderRadius: BorderRadius.circular(22),
+                            color: (dark ? const Color(0xFF252540) : Colors.white).withValues(alpha: 0.9),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.hazeBlue.withValues(alpha:0.2),
+                                color: (dark ? const Color(0xFF3A3A60) : AppColors.hazeBlue).withValues(alpha: 0.3),
                                 blurRadius: 30,
                                 offset: const Offset(0, 8),
                               ),
                             ],
                           ),
-                          child: Center(
-                            child: Text(
-                              '☁️',
-                              style: TextStyle(fontSize: 48),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(22),
+                            child: Image.asset(
+                              dark
+                                  ? 'assets/images/app_icon_night.png'
+                                  : 'assets/images/app_icon_day.png',
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 32),
-                    // App name
                     Opacity(
                       opacity: _fadeIn.value,
                       child: Transform.translate(
                         offset: Offset(0, 4 * (1 - _float.value)),
-                        child: const Text(
+                        child: Text(
                           '抱抱情绪云',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: dark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                             letterSpacing: 4,
                           ),
                         ),
@@ -132,16 +158,15 @@ class _AppSplashState extends State<AppSplash> with SingleTickerProviderStateMix
                         '用温暖抱抱你的每一种情绪',
                         style: TextStyle(
                           fontSize: 14,
-                          color: AppColors.textSecondary,
+                          color: dark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                           letterSpacing: 2,
                         ),
                       ),
                     ),
                     const SizedBox(height: 48),
-                    // Loading dots
                     Opacity(
                       opacity: _fadeIn.value * 0.6,
-                      child: _LoadingDots(),
+                      child: _LoadingDots(isDarkMode: dark),
                     ),
                   ],
                 ),
@@ -153,42 +178,44 @@ class _AppSplashState extends State<AppSplash> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildFloatingCircles() {
+  Widget _buildFloatingCircles(bool dark) {
     return Positioned.fill(
       child: Opacity(
         opacity: _fadeIn.value * 0.4,
-        child: const _FloatingDecorations(),
+        child: _FloatingDecorations(isDarkMode: dark),
       ),
     );
   }
 }
 
 class _FloatingDecorations extends StatelessWidget {
-  const _FloatingDecorations();
+  final bool isDarkMode;
+  const _FloatingDecorations({required this.isDarkMode});
 
   @override
   Widget build(BuildContext context) {
+    final alpha = isDarkMode ? 0.25 : 0.15;
     return Stack(
       children: [
         Align(
           alignment: const Alignment(-0.7, -0.6),
-          child: _DecoCircle(color: AppColors.softPink, size: 60, delay: 0.0),
+          child: _DecoCircle(color: AppColors.softPink.withValues(alpha: alpha), size: 60, delay: 0.0),
         ),
         Align(
           alignment: const Alignment(0.75, -0.4),
-          child: _DecoCircle(color: AppColors.lightCyan, size: 80, delay: 0.3),
+          child: _DecoCircle(color: AppColors.lightCyan.withValues(alpha: alpha), size: 80, delay: 0.3),
         ),
         Align(
           alignment: const Alignment(-0.6, 0.2),
-          child: _DecoCircle(color: AppColors.gentlePurple, size: 50, delay: 0.6),
+          child: _DecoCircle(color: AppColors.gentlePurple.withValues(alpha: alpha), size: 50, delay: 0.6),
         ),
         Align(
           alignment: const Alignment(0.65, 0.1),
-          child: _DecoCircle(color: AppColors.calmGreen, size: 70, delay: 0.9),
+          child: _DecoCircle(color: AppColors.calmGreen.withValues(alpha: alpha), size: 70, delay: 0.9),
         ),
         Align(
           alignment: const Alignment(-0.3, 0.5),
-          child: _DecoCircle(color: AppColors.softOrange, size: 40, delay: 1.2),
+          child: _DecoCircle(color: AppColors.softOrange.withValues(alpha: alpha), size: 40, delay: 1.2),
         ),
       ],
     );
@@ -244,7 +271,7 @@ class _DecoCircleState extends State<_DecoCircle>
             height: widget.size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: widget.color.withValues(alpha:0.15),
+              color: widget.color,
             ),
           ),
         );
@@ -254,6 +281,9 @@ class _DecoCircleState extends State<_DecoCircle>
 }
 
 class _LoadingDots extends StatefulWidget {
+  final bool isDarkMode;
+  const _LoadingDots({required this.isDarkMode});
+
   @override
   State<_LoadingDots> createState() => _LoadingDotsState();
 }
@@ -279,6 +309,9 @@ class _LoadingDotsState extends State<_LoadingDots>
 
   @override
   Widget build(BuildContext context) {
+    final dotColor = widget.isDarkMode
+        ? const Color(0xFF7B8BA0)
+        : AppColors.hazeBlue;
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, child) {
@@ -295,7 +328,7 @@ class _LoadingDotsState extends State<_LoadingDots>
                 height: 8,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.hazeBlue.withValues(alpha:opacity),
+                  color: dotColor.withValues(alpha: opacity),
                 ),
               ),
             );
