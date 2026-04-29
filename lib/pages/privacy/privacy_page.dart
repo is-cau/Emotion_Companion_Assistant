@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../app/themes/app_colors.dart';
 import '../../app/app_controller.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/llm_config_dialog.dart';
 
 class PrivacyPage extends StatefulWidget {
   const PrivacyPage({super.key});
@@ -142,6 +143,21 @@ class PrivacyPageState extends State<PrivacyPage> {
                       onTap: _showSetPinDialog,
                     ),
                   ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 大模型配置
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Card(
+                child: _buildActionTile(
+                  icon: Icons.api,
+                  title: '大模型配置',
+                  subtitle: '自定义API地址、Key和模型',
+                  color: AppColors.hazeBlue,
+                  onTap: () => showLlmConfigDialog(context),
                 ),
               ),
             ),

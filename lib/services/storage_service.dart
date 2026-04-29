@@ -13,6 +13,9 @@ class StorageService {
   static const String _conversationsKey = 'conversations';
   static const String _activeConvKey = 'active_conversation_id';
   static const String _ttsVoiceTypeKey = 'tts_voice_type';
+  static const String _llmBaseUrlKey = 'llm_base_url';
+  static const String _llmApiKeyKey = 'llm_api_key';
+  static const String _llmModelKey = 'llm_model';
 
   Future<List<EmotionRecord>> getAllRecords() async {
     final prefs = await SharedPreferences.getInstance();
@@ -190,5 +193,62 @@ class StorageService {
   Future<void> setTtsVoiceType(String voiceType) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_ttsVoiceTypeKey, voiceType);
+  }
+
+  // ===== 大模型用户自定义配置 =====
+
+  Future<String?> getLlmBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_llmBaseUrlKey);
+  }
+
+  Future<void> setLlmBaseUrl(String? url) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (url == null || url.isEmpty) {
+      await prefs.remove(_llmBaseUrlKey);
+    } else {
+      await prefs.setString(_llmBaseUrlKey, url);
+    }
+  }
+
+  Future<String?> getLlmApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_llmApiKeyKey);
+  }
+
+  Future<void> setLlmApiKey(String? key) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (key == null || key.isEmpty) {
+      await prefs.remove(_llmApiKeyKey);
+    } else {
+      await prefs.setString(_llmApiKeyKey, key);
+    }
+  }
+
+  Future<String?> getLlmModel() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_llmModelKey);
+  }
+
+  Future<void> setLlmModel(String? model) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (model == null || model.isEmpty) {
+      await prefs.remove(_llmModelKey);
+    } else {
+      await prefs.setString(_llmModelKey, model);
+    }
+  }
+
+  Future<bool> hasLlmUserConfig() async {
+    final url = await getLlmBaseUrl();
+    final key = await getLlmApiKey();
+    return url != null && url.isNotEmpty && key != null && key.isNotEmpty;
+  }
+
+  Future<void> clearLlmConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_llmBaseUrlKey);
+    await prefs.remove(_llmApiKeyKey);
+    await prefs.remove(_llmModelKey);
   }
 }

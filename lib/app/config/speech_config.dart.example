@@ -20,13 +20,11 @@ class SpeechConfig {
 
   /// TTS 音色常量
   static const String voiceTypeFemale = 'zh_female_vv_uranus_bigtts';   // vivi 2.0 (清新女声)
-  static const String voiceTypeFemale2 = 'saturn_zh_female_cancan_tob'; // 知性灿灿 (知性女声)
   static const String voiceTypeMale = 'zh_male_m191_uranus_bigtts';     // 云舟 (沉稳男声)
 
   /// 音色显示名映射
   static const Map<String, String> voiceTypeLabels = {
     'zh_female_vv_uranus_bigtts': 'vivi 2.0 (清新女声)',
-    'saturn_zh_female_cancan_tob': '知性灿灿 (知性女声)',
     'zh_male_m191_uranus_bigtts': '云舟 (沉稳男声)',
   };
 

@@ -3,15 +3,49 @@ import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../app/config/llm_config.dart';
+import 'storage_service.dart';
 
 class LlmService {
   static final LlmService _instance = LlmService._();
   factory LlmService() => _instance;
   LlmService._();
 
-  final String _baseUrl = LlmConfig.baseUrl;
-  final String _apiKey = LlmConfig.apiKey;
-  final String _model = LlmConfig.model;
+  String _baseUrl = LlmConfig.baseUrl;
+  String _apiKey = LlmConfig.apiKey;
+  String _model = LlmConfig.model;
+  int _maxTokens = LlmConfig.maxTokens;
+  double _temperature = LlmConfig.temperature;
+
+  final StorageService _storageService = StorageService();
+
+  /// 从本地存储加载用户自定义配置，未设置则使用 LlmConfig 默认值
+  Future<void> reloadConfig() async {
+    final userUrl = await _storageService.getLlmBaseUrl();
+    final userKey = await _storageService.getLlmApiKey();
+    final userModel = await _storageService.getLlmModel();
+
+    _baseUrl = (userUrl != null && userUrl.isNotEmpty) ? userUrl : LlmConfig.baseUrl;
+    _apiKey = (userKey != null && userKey.isNotEmpty) ? userKey : LlmConfig.apiKey;
+    _model = (userModel != null && userModel.isNotEmpty) ? userModel : LlmConfig.model;
+    _maxTokens = LlmConfig.maxTokens;
+    _temperature = LlmConfig.temperature;
+
+    developer.log('【LLM配置】baseUrl: $_baseUrl, model: $_model, apiKey: ${_apiKey.length > 6 ? '${_apiKey.substring(0, 6)}****' : '****'}');
+  }
+
+  /// 当前是否使用用户自定义配置
+  Future<bool> isUsingUserConfig() async {
+    return _storageService.hasLlmUserConfig();
+  }
+
+  /// 当前生效的 baseUrl
+  String get baseUrl => _baseUrl;
+
+  /// 当前生效的 apiKey
+  String get apiKey => _apiKey;
+
+  /// 当前生效的模型名
+  String get model => _model;
 
   final List<Map<String, String>> _history = [];
 
@@ -51,8 +85,8 @@ class LlmService {
         body: jsonEncode({
           'model': _model,
           'messages': messages,
-          'max_tokens': LlmConfig.maxTokens,
-          'temperature': LlmConfig.temperature,
+          'max_tokens': _maxTokens,
+          'temperature': _temperature,
         }),
       ).timeout(const Duration(seconds: 60));
 
@@ -116,8 +150,8 @@ class LlmService {
       request.body = jsonEncode({
         'model': _model,
         'messages': messages,
-        'max_tokens': LlmConfig.maxTokens,
-        'temperature': LlmConfig.temperature,
+        'max_tokens': _maxTokens,
+        'temperature': _temperature,
         'stream': true,
       });
 
@@ -304,6 +338,56 @@ class LlmService {
     } catch (_) {}
     // 降级：截取用户消息前15字作为标题
     return userMessage.length > 15 ? '${userMessage.substring(0, 15)}…' : userMessage;
+  }
+
+  /// 测试连接：用指定配置发送简单请求，返回 (成功, 消息)
+  Future<(bool, String)> testConnection({
+    required String baseUrl,
+    required String apiKey,
+    required String model,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/chat/completions');
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
+        body: jsonEncode({
+          'model': model,
+          'messages': [
+            {'role': 'user', 'content': 'Hi'},
+          ],
+          'max_tokens': 16,
+          'temperature': 0,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        return (true, '连接成功，大模型响应正常');
+      } else {
+        String errorDetail;
+        try {
+          final errorJson = jsonDecode(response.body);
+          errorDetail = errorJson['error']?['message'] ?? errorJson['message'] ?? response.body;
+        } catch (_) {
+          errorDetail = response.body;
+        }
+        return (false, '连接失败 (状态码: ${response.statusCode})\n$errorDetail');
+      }
+    } on SocketException catch (e) {
+      return (false, '网络连接失败，请检查 API 地址是否正确\n$e');
+    } on HttpException catch (e) {
+      return (false, 'HTTP 请求异常，请检查 API 地址格式\n$e');
+    } on FormatException {
+      return (false, '响应格式异常，请确认 API 为 OpenAI 兼容格式');
+    } catch (e) {
+      if (e.toString().contains('TimeoutException')) {
+        return (false, '连接超时，请检查网络或 API 地址');
+      }
+      return (false, '连接测试异常: $e');
+    }
   }
 
   /// 清空对话历史

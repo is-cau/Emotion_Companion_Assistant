@@ -8,6 +8,7 @@ import 'pages/home/home_page.dart';
 import 'pages/treehole/treehole_page.dart';
 import 'pages/comfort/comfort_page.dart';
 import 'pages/privacy/privacy_page.dart';
+import 'services/llm_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,6 +52,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   void initState() {
     super.initState();
+    LlmService().reloadConfig();
     _pages = [
       HomePage(key: _homeKey, onNavigateToComfort: () => _onTabChanged(2)),
       TreeholePage(key: _treeholeKey),

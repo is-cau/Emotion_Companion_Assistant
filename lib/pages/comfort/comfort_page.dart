@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../app/themes/app_colors.dart';
-import '../../app/config/llm_config.dart';
 import '../../app/config/speech_config.dart';
 import '../../services/emotion_service.dart';
 import '../../services/llm_service.dart';
@@ -12,6 +11,7 @@ import '../../services/ai_comfort_service.dart';
 import '../../services/speech_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
+import '../../widgets/llm_config_dialog.dart';
 
 class ComfortPage extends StatefulWidget {
   const ComfortPage({super.key});
@@ -506,7 +506,7 @@ class _ComfortPageState extends State<ComfortPage> {
               } else if (value == 'voice') {
                 _showVoicePicker();
               } else if (value == 'config') {
-                _showConfigInfo();
+                _showLlmConfigDialog();
               }
             },
             itemBuilder: (context) => [
@@ -561,7 +561,7 @@ class _ComfortPageState extends State<ComfortPage> {
                   children: [
                     Icon(Icons.settings_outlined, size: 18),
                     SizedBox(width: 8),
-                    Text('查看配置'),
+                    Text('大模型配置'),
                   ],
                 ),
               ),
@@ -1041,38 +1041,13 @@ class _ComfortPageState extends State<ComfortPage> {
     setState(() {});
   }
 
-  void _showConfigInfo() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('当前大模型配置'),
-        content: SelectableText(
-          'Base URL: ${LlmConfig.baseUrl}\n'
-          'Model: ${LlmConfig.model}\n'
-          'API Key: ${LlmConfig.apiKey.substring(0, LlmConfig.apiKey.length > 10 ? 10 : LlmConfig.apiKey.length)}****\n'
-          'Temperature: ${LlmConfig.temperature}\n'
-          'Max Tokens: ${LlmConfig.maxTokens}\n\n'
-          '提示：如调用失败，请检查\n'
-          '1. baseUrl 是否以 /v1 结尾\n'
-          '2. model 名称是否正确（如 deepseek-chat）\n'
-          '3. API Key 是否有效',
-          style: const TextStyle(fontSize: 13, height: 1.6),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
-    );
+  void _showLlmConfigDialog() {
+    showLlmConfigDialog(context);
   }
 
   void _showVoicePicker() {
     final voices = [
       SpeechConfig.voiceTypeFemale,
-      SpeechConfig.voiceTypeFemale2,
       SpeechConfig.voiceTypeMale,
     ];
     showDialog(
