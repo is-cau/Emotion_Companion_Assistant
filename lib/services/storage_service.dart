@@ -239,6 +239,47 @@ class StorageService {
     }
   }
 
+  // ===== 梦境解读历史 =====
+
+  static const String _dreamRecordsKey = 'dream_records';
+
+  Future<List<DreamRecord>> getAllDreamRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList(_dreamRecordsKey) ?? [];
+    return data.map((e) => DreamRecord.fromJson(jsonDecode(e))).toList();
+  }
+
+  Future<void> saveDreamRecord(DreamRecord record) async {
+    final prefs = await SharedPreferences.getInstance();
+    final records = await getAllDreamRecords();
+    final existingIndex = records.indexWhere((r) => r.id == record.id);
+    if (existingIndex >= 0) {
+      records[existingIndex] = record;
+    } else {
+      records.insert(0, record);
+    }
+    if (records.length > 100) records.removeRange(100, records.length);
+    await prefs.setStringList(
+      _dreamRecordsKey,
+      records.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  Future<void> deleteDreamRecord(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final records = await getAllDreamRecords();
+    records.removeWhere((r) => r.id == id);
+    await prefs.setStringList(
+      _dreamRecordsKey,
+      records.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  Future<void> clearAllDreamRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_dreamRecordsKey);
+  }
+
   Future<bool> hasLlmUserConfig() async {
     final url = await getLlmBaseUrl();
     final key = await getLlmApiKey();

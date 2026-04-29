@@ -305,6 +305,101 @@ class LlmService {
     }
   }
 
+  /// 梦境解读：调用大模型进行多维度梦境分析
+  /// 返回 { "title": "...", "analysis": "..." }，失败返回 null
+  Future<Map<String, String>?> analyzeDream(String dreamText) async {
+    const String dreamPrompt = '''你是一位温柔、专业、富有同理心的梦境解读师。请对用户描述的梦境进行深度分析。
+
+你必须严格按照以下格式回复，第一行是标题，之后是Markdown正文：
+
+# [为这个梦境起一个富有诗意的简短标题，8字以内]
+
+然后使用Markdown格式进行多维度分析，必须使用"## "作为每部分标题：
+
+## 梦境主题与象征
+识别梦中的核心意象和符号，解读它们可能象征的含义（可参考但不限于荣格原型理论）。注意区分普遍象征与个人关联。
+
+## 情绪分析
+分析梦境中反映的情绪基调，以及这些情绪可能与用户当下心理状态的联系。关注梦中情绪的强度和变化。
+
+## 心理学解读
+从心理学视角（如精神分析、认知心理学、人本主义等）进行温和的深入解读。保持开放性，避免武断结论。
+
+## 生活关联
+探索梦境与用户现实生活可能的联结。可以引导用户思考梦境是否反映了某些未被注意的压力、愿望或关系议题。
+
+## 建议与引导
+基于梦境的整体分析，提供3-5条温暖、具体、可操作的心灵成长建议或自我关怀引导。每条控制在1-2句话。
+
+回复规则：
+1. 语气温柔共情，像夜色中一位知心的陪伴者
+2. 大量使用"可能""或许""有时意味着"等开放性措辞，避免绝对化判断
+3. 每个方面写2-4句话，整体控制在800-1000字
+4. 鼓励用户关注自己的内心感受，而非盲目相信外部解读
+5. 如果梦境内容涉及明显的创伤重现、自伤或危机信号，在建议部分温柔提及"建议寻求专业心理咨询师的一对一帮助"
+6. 在回复末尾添加一小段总结性的温暖话语，用"---"分隔线隔开''';
+
+    try {
+      final uri = Uri.parse('$_baseUrl/chat/completions');
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'model': _model,
+          'messages': [
+            {'role': 'system', 'content': dreamPrompt},
+            {'role': 'user', 'content': '请解读以下梦境：\n$dreamText'},
+          ],
+          'max_tokens': 3072,
+          'temperature': 0.5,
+        }),
+      ).timeout(const Duration(seconds: 60));
+
+      developer.log('【梦境解读】状态码: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final reply = data['choices']?[0]?['message']?['content'] as String?;
+        if (reply == null || reply.isEmpty) return null;
+
+        String result = reply.trim();
+        if (result.startsWith('```')) {
+          final start = result.indexOf('\n');
+          if (start != -1) {
+            result = result.substring(start + 1);
+            if (result.endsWith('```')) {
+              result = result.substring(0, result.lastIndexOf('```')).trim();
+            }
+          }
+        }
+
+        // 提取标题（第一个 # 开头的行）
+        String title = '梦境解读';
+        String analysis = result;
+        final firstLineEnd = result.indexOf('\n');
+        if (firstLineEnd != -1) {
+          final firstLine = result.substring(0, firstLineEnd).trim();
+          if (firstLine.startsWith('# ')) {
+            title = firstLine.substring(2).trim();
+            analysis = result.substring(firstLineEnd + 1).trim();
+          }
+        }
+
+        developer.log('【梦境解读】标题: $title, 内容长度: ${analysis.length}');
+        return {'title': title, 'analysis': analysis};
+      } else {
+        developer.log('【梦境解读】失败: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      developer.log('【梦境解读】异常: $e');
+      return null;
+    }
+  }
+
   /// 根据对话内容生成简短标题（10字以内）
   Future<String> generateTitle(String userMessage, String aiReply) async {
     const prompt = '根据以下对话内容，生成一个10字以内的简短标题，直接返回标题文字，不要引号、标点或额外说明。';

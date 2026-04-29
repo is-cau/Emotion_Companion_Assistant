@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 import '../app/config/speech_config.dart';
 
 class SpeechService {
-  // ==================== 豆包 ASR (云端语音识别) ====================
-  static const _asrUrl = 'https://openspeech.bytedance.com/api/v1/asr';
+  // ==================== 豆包 ASR (WebSocket 流式识别) ====================
+  static const _asrWsUrl = 'https://openspeech.bytedance.com/api/v3/sauc/bigmodel';
+  static const _resourceId = 'volc.seedasr.sauc.duration';
 
   final AudioRecorder _recorder = AudioRecorder();
   bool _isRecording = false;
@@ -21,13 +23,13 @@ class SpeechService {
       if (!hasPermission) return false;
 
       const config = RecordConfig(
-        encoder: AudioEncoder.wav,
+        encoder: AudioEncoder.pcm16bits,
         numChannels: 1,
         sampleRate: 16000,
         bitRate: 256000,
       );
       final path =
-          '${Directory.systemTemp.path}/asr_${DateTime.now().microsecondsSinceEpoch}.wav';
+          '${Directory.systemTemp.path}/asr_${DateTime.now().microsecondsSinceEpoch}.pcm';
       await _recorder.start(config, path: path);
       _lastFilePath = path;
       _isRecording = true;
@@ -47,10 +49,10 @@ class SpeechService {
         print('ASR: no audio file recorded');
         return null;
       }
-      print('ASR recording stopped: $path (${File(path).lengthSync()} bytes)');
+      final fileSize = File(path).lengthSync();
+      print('ASR recording stopped: $path ($fileSize bytes)');
 
-      final text = await _sendToAsr(path);
-      // 删除临时文件
+      final text = await _sendToAsrWs(path);
       try { File(path).deleteSync(); } catch (_) {}
       return text;
     } catch (e) {
@@ -67,34 +69,115 @@ class SpeechService {
     } catch (_) {}
   }
 
-  Future<String?> _sendToAsr(String audioPath) async {
+  Future<String?> _sendToAsrWs(String audioPath) async {
     try {
-      // 使用火山方舟 Seed API (兼容 OpenAI 格式)
-      const url = 'https://ark.cn-beijing.volces.com/api/v3/audio/transcriptions';
+      final audioBytes = await File(audioPath).readAsBytes();
+      final connectId = _generateUuid();
 
-      final request = http.MultipartRequest('POST', Uri.parse(url));
-      request.headers['Authorization'] = 'Bearer ${SpeechConfig.arkApiKey}';
-      request.fields['model'] = SpeechConfig.asrModel;
-      request.fields['language'] = 'zh';
-      request.files.add(await http.MultipartFile.fromPath('file', audioPath));
+      // 使用 HttpClient 以支持自定义 Header 的 WebSocket 升级
+      final client = HttpClient();
+      final wsRequest = await client.openUrl('GET', Uri.parse(_asrWsUrl));
+      wsRequest.headers.add('X-Api-App-Key', SpeechConfig.appId);
+      wsRequest.headers.add('X-Api-Access-Key', SpeechConfig.accessToken);
+      wsRequest.headers.add('X-Api-Resource-Id', _resourceId);
+      wsRequest.headers.add('X-Api-Connect-Id', connectId);
 
-      final streamedResp = await request.send().timeout(const Duration(seconds: 30));
-      final resp = await http.Response.fromStream(streamedResp);
+      final wsResponse = await wsRequest.close();
+      final socket = await wsResponse.detachSocket();
+      final ws = WebSocket.fromUpgradedSocket(socket, serverSide: false);
 
-      print('ASR response: status=${resp.statusCode}, body=${resp.body}');
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
-        final text = data['text'] as String?;
-        if (text != null && text.isNotEmpty) {
-          return text;
-        }
+      final resultCompleter = Completer<String?>();
+      final textBuffer = StringBuffer();
+
+      ws.listen(
+        (data) {
+          if (data is String) {
+            try {
+              final msg = jsonDecode(data);
+              print('ASR WS message: $msg');
+              if (msg['code'] != null && msg['code'] != 0) {
+                print('ASR WS error: ${msg['message']}');
+                if (!resultCompleter.isCompleted) resultCompleter.complete(null);
+              }
+              if (msg['payload_msg'] != null) {
+                final payload = msg['payload_msg'];
+                final text = payload['text'] ?? payload['result'] ?? '';
+                if (text is String && text.isNotEmpty) {
+                  textBuffer.write(text);
+                }
+              }
+              if (msg['type'] == 'final' || msg['type'] == 'end') {
+                if (!resultCompleter.isCompleted) {
+                  resultCompleter.complete(textBuffer.toString());
+                }
+              }
+            } catch (_) {}
+          }
+        },
+        onError: (e) {
+          print('ASR WS error: $e');
+          if (!resultCompleter.isCompleted) resultCompleter.complete(null);
+        },
+        onDone: () {
+          print('ASR WS closed, text=${textBuffer.toString()}');
+          if (!resultCompleter.isCompleted) {
+            final text = textBuffer.toString();
+            resultCompleter.complete(text.isNotEmpty ? text : null);
+          }
+        },
+        cancelOnError: false,
+      );
+
+      // 发送开始消息
+      final startMsg = jsonEncode({
+        'type': 'start',
+        'audio': {
+          'format': 'pcm',
+          'rate': 16000,
+          'bits': 16,
+          'channel': 1,
+          'language': 'zh-CN',
+        },
+      });
+      ws.add(startMsg);
+      print('ASR WS sent: $startMsg');
+
+      // 分块发送音频数据
+      const chunkSize = 3200; // 100ms at 16kHz 16bit mono
+      for (int i = 0; i < audioBytes.length; i += chunkSize) {
+        final end = (i + chunkSize).clamp(0, audioBytes.length);
+        ws.add(audioBytes.sublist(i, end));
+        await Future.delayed(const Duration(milliseconds: 10));
       }
-      return null;
+      print('ASR WS audio sent: ${audioBytes.length} bytes');
+
+      // 发送结束消息
+      final endMsg = jsonEncode({'type': 'end'});
+      ws.add(endMsg);
+      print('ASR WS sent: $endMsg');
+
+      final result =
+          await resultCompleter.future.timeout(const Duration(seconds: 15));
+      await ws.close();
+      client.close();
+      return result;
     } catch (e) {
-      print('ASR _sendToAsr error: $e');
+      print('ASR WS exception: $e');
       return null;
     }
   }
+
+  String _generateUuid() {
+    final r = Random();
+    return '${_hex8(r)}-${_hex4(r)}-${_hex4(r)}-${_hex4(r)}-${_hex12(r)}';
+  }
+
+  String _hex8(Random r) =>
+      r.nextInt(0xFFFFFFFF).toRadixString(16).padLeft(8, '0');
+  String _hex4(Random r) =>
+      r.nextInt(0xFFFF).toRadixString(16).padLeft(4, '0');
+  String _hex12(Random r) =>
+      '${r.nextInt(0xFFFF).toRadixString(16).padLeft(4, '0')}${r.nextInt(0xFFFFFFFF).toRadixString(16).padLeft(8, '0')}';
 
   // ==================== 豆包 TTS ====================
   static const _ttsUrl = 'https://openspeech.bytedance.com/api/v1/tts';

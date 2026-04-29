@@ -249,39 +249,56 @@ class HomePageState extends State<HomePage> {
               // 快捷功能
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _buildQuickAction(
-                        icon: Icons.auto_awesome,
-                        label: 'AI暖心安慰',
-                        color: AppColors.softPink,
-                        onTap: () {
-                          if (widget.onNavigateToComfort != null) {
-                            widget.onNavigateToComfort!();
-                          } else {
-                            Get.toNamed(AppRoutes.comfort);
-                          }
-                        },
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickAction(
+                            icon: Icons.auto_awesome,
+                            label: 'AI暖心安慰',
+                            color: AppColors.softPink,
+                            onTap: () {
+                              if (widget.onNavigateToComfort != null) {
+                                widget.onNavigateToComfort!();
+                              } else {
+                                Get.toNamed(AppRoutes.comfort);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAction(
+                            icon: Icons.analytics_outlined,
+                            label: '情绪分析',
+                            color: AppColors.lightCyan,
+                            onTap: () => Get.toNamed(AppRoutes.analysis),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickAction(
-                        icon: Icons.analytics_outlined,
-                        label: '情绪分析',
-                        color: AppColors.lightCyan,
-                        onTap: () => Get.toNamed(AppRoutes.analysis),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickAction(
-                        icon: Icons.shield_outlined,
-                        label: '隐私中心',
-                        color: AppColors.gentlePurple,
-                        onTap: () => Get.toNamed(AppRoutes.privacy),
-                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickAction(
+                            icon: Icons.shield_outlined,
+                            label: '隐私中心',
+                            color: AppColors.gentlePurple,
+                            onTap: () => Get.toNamed(AppRoutes.privacy),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAction(
+                            icon: Icons.nightlight_round,
+                            label: 'AI梦境解读',
+                            color: AppColors.dreamyLavender,
+                            onTap: () => Get.toNamed(AppRoutes.dream),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

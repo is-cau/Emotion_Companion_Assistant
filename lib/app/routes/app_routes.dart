@@ -4,6 +4,7 @@ import '../../pages/treehole/treehole_page.dart';
 import '../../pages/comfort/comfort_page.dart';
 import '../../pages/privacy/privacy_page.dart';
 import '../../pages/analysis/analysis_page.dart';
+import '../../pages/dream/dream_page.dart';
 
 class AppRoutes {
   static const String home = '/';
@@ -11,6 +12,7 @@ class AppRoutes {
   static const String comfort = '/comfort';
   static const String privacy = '/privacy';
   static const String analysis = '/analysis';
+  static const String dream = '/dream';
 
   static final routes = [
     GetPage(name: home, page: () => const HomePage()),
@@ -18,5 +20,6 @@ class AppRoutes {
     GetPage(name: comfort, page: () => const ComfortPage()),
     GetPage(name: privacy, page: () => const PrivacyPage()),
     GetPage(name: analysis, page: () => const AnalysisPage()),
+    GetPage(name: dream, page: () => const DreamPage()),
   ];
 }

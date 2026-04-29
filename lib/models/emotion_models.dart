@@ -62,6 +62,38 @@ class EmotionRecord {
       );
 }
 
+class DreamRecord {
+  final String id;
+  final String dreamText;
+  final String analysis;
+  final String title;
+  final DateTime createdAt;
+
+  DreamRecord({
+    required this.id,
+    required this.dreamText,
+    required this.analysis,
+    required this.title,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'dreamText': dreamText,
+        'analysis': analysis,
+        'title': title,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory DreamRecord.fromJson(Map<String, dynamic> json) => DreamRecord(
+        id: json['id'],
+        dreamText: json['dreamText'],
+        analysis: json['analysis'],
+        title: json['title'],
+        createdAt: DateTime.parse(json['createdAt']),
+      );
+}
+
 class ChatMessage {
   final String id;
   final String content;
