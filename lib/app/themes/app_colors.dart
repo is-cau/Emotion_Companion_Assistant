@@ -25,6 +25,8 @@ class AppColors {
   // 夜间模式
   static const Color darkBackground = Color(0xFF1A1A2E);
   static const Color darkCard = Color(0xFF252540);
+  static const Color darkInputFill = Color(0xFF2E2E50);
   static const Color darkTextPrimary = Color(0xFFE0D8D0);
   static const Color darkTextSecondary = Color(0xFFB8B0B8);
+  static const Color darkTextHint = Color(0xFF7A7A8A);
 }

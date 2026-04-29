@@ -22,7 +22,7 @@ class EmotionCompanionApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.find<AppController>();
     return Obx(() => GetMaterialApp(
-          title: '情感分析小助手',
+          title: '抱抱情绪云',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,

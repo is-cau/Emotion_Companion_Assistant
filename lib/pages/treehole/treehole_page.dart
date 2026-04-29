@@ -366,6 +366,18 @@ class TreeholePageState extends State<TreeholePage> {
                   onSubmitted: (_) => tryUnlock(),
                 ),
               ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => _showForgotPasswordDialog(),
+                child: Text(
+                  '忘记密码？',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.hazeBlue.withValues(alpha: 0.7),
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -606,12 +618,13 @@ class TreeholePageState extends State<TreeholePage> {
   Future<void> _lockTreehole() async {
     final hasPin = await _storageService.hasPin();
     if (!hasPin) {
-      // 第一次锁定：需要先设置密码
       final set = await _showCreatePinDialog(title: '首次锁定树洞', hint: '请设置4-6位数字密码');
       if (set == true) {
         await _storageService.setLocked(true);
         setState(() => _isLocked = true);
-        if (mounted) _showTreasureDialog();
+        if (mounted) {
+          await _showRecoveryQASetupDialog();
+        }
       }
     } else {
       final confirmed = await showDialog<bool>(
@@ -636,29 +649,94 @@ class TreeholePageState extends State<TreeholePage> {
     }
   }
 
-  /// 创建密码弹窗（与隐私页共用逻辑）
+  /// 创建密码弹窗（两步验证：输入 → 确认）
   Future<bool?> _showCreatePinDialog({required String title, required String hint}) {
+    final controller = TextEditingController();
+    String? errorText;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('请输入4-6位数字密码', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  errorText: errorText,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+            TextButton(
+              onPressed: () async {
+                final pin = controller.text;
+                if (pin.length < 4) {
+                  setDialogState(() => errorText = '密码至少4位');
+                  return;
+                }
+                // 弹出确认密码弹窗
+                final confirmed = await _showConfirmPinDialog(pin);
+                if (confirmed == true) {
+                  await _storageService.setPin(pin);
+                  Navigator.pop(context, true);
+                } else if (confirmed == false) {
+                  setDialogState(() => errorText = '两次输入不一致，请重新输入');
+                  controller.clear();
+                }
+              },
+              child: Text('下一步', style: TextStyle(color: AppColors.hazeBlue)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 确认密码弹窗（二次输入）
+  Future<bool?> _showConfirmPinDialog(String firstPin) {
     final controller = TextEditingController();
 
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          decoration: InputDecoration(hintText: hint),
+        title: const Text('确认密码'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('请再次输入密码以确认', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(hintText: '请再次输入密码'),
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
           TextButton(
-            onPressed: () async {
-              if (controller.text.length >= 4) {
-                await _storageService.setPin(controller.text);
+            onPressed: () {
+              if (controller.text == firstPin) {
                 Navigator.pop(context, true);
+              } else {
+                Navigator.pop(context, false);
               }
             },
             child: Text('确认', style: TextStyle(color: AppColors.hazeBlue)),
@@ -668,27 +746,180 @@ class TreeholePageState extends State<TreeholePage> {
     );
   }
 
-  /// "专属密码" 提示弹窗
-  void _showTreasureDialog() {
-    showDialog(
+  /// 二级安保：设置密保问题与答案（强制设置）
+  Future<void> _showRecoveryQASetupDialog() async {
+    final questionController = TextEditingController();
+    final answerController = TextEditingController();
+
+    return showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.favorite, color: AppColors.softPink, size: 24),
+            Icon(Icons.security, color: AppColors.softOrange, size: 24),
             const SizedBox(width: 8),
-            const Text('密码已设置'),
+            const Text('二级安保设置'),
           ],
         ),
-        content: const Text('这是你的专属树洞密码，请好好保管'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '设置密保问题，忘记密码时可通过回答此问题找回',
+              style: TextStyle(fontSize: 13, color: AppColors.textHint),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: questionController,
+              decoration: const InputDecoration(
+                hintText: '请输入密保问题（如：我的小名是什么？）',
+                labelText: '密保问题',
+              ),
+              maxLength: 50,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: answerController,
+              decoration: const InputDecoration(
+                hintText: '请输入答案',
+                labelText: '密保答案',
+              ),
+              maxLength: 30,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('我知道了', style: TextStyle(color: AppColors.hazeBlue)),
+            onPressed: () async {
+              final q = questionController.text.trim();
+              final a = answerController.text.trim();
+              if (q.isEmpty || a.isEmpty) return;
+              await _storageService.setRecoveryQA(q, a);
+              Navigator.pop(context);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('密保已设置，忘记密码时可通过密保找回'),
+                    backgroundColor: AppColors.calmGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            child: Text('确认设置', style: TextStyle(color: AppColors.hazeBlue)),
           ),
         ],
       ),
     );
+  }
+
+  /// 忘记密码 → 密保验证 → 重置密码
+  Future<void> _showForgotPasswordDialog() async {
+    final hasQA = await _storageService.hasRecoveryQA();
+    if (!hasQA) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('无法找回'),
+            content: const Text('尚未设置密保问题，无法通过此方式找回密码。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('知道了', style: TextStyle(color: AppColors.hazeBlue)),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    final question = await _storageService.getRecoveryQuestion();
+    final answerController = TextEditingController();
+    String? errorText;
+
+    if (!mounted) return;
+    final verified = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.help_outline, color: AppColors.softOrange, size: 24),
+              const SizedBox(width: 8),
+              const Text('找回密码'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('请回答以下密保问题：', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.softOrange.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  question ?? '',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: answerController,
+                decoration: InputDecoration(
+                  hintText: '请输入答案',
+                  errorText: errorText,
+                ),
+                maxLength: 30,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+            TextButton(
+              onPressed: () async {
+                final ok = await _storageService.verifyRecoveryAnswer(answerController.text.trim());
+                if (ok) {
+                  Navigator.pop(context, true);
+                } else {
+                  setDialogState(() => errorText = '答案错误，请重试');
+                }
+              },
+              child: Text('验证', style: TextStyle(color: AppColors.hazeBlue)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (verified == true && mounted) {
+      // 密保验证通过 → 重置密码
+      await _storageService.clearPin();
+      final set = await _showCreatePinDialog(title: '重置密码', hint: '请设置新的4-6位数字密码');
+      if (set == true && mounted) {
+        // 重新设置密保
+        _showRecoveryQASetupDialog();
+        // 解锁
+        setState(() => _isLocked = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('密码已重置，树洞已解锁'),
+            backgroundColor: AppColors.calmGreen,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 }

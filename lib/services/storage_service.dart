@@ -7,6 +7,8 @@ class StorageService {
   static const String _recordsKey = 'emotion_records';
   static const String _lockKey = 'treehole_locked';
   static const String _pinKey = 'treehole_pin';
+  static const String _recoveryQuestionKey = 'treehole_recovery_question';
+  static const String _recoveryAnswerKey = 'treehole_recovery_answer';
   static const String _conversationsKey = 'conversations';
   static const String _activeConvKey = 'active_conversation_id';
 
@@ -76,6 +78,39 @@ class StorageService {
   Future<bool> hasPin() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey(_pinKey);
+  }
+
+  // ===== 密码找回（二级安保） =====
+
+  Future<void> setRecoveryQA(String question, String answer) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_recoveryQuestionKey, question);
+    final hashed = md5.convert(utf8.encode(answer)).toString();
+    await prefs.setString(_recoveryAnswerKey, hashed);
+  }
+
+  Future<String?> getRecoveryQuestion() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_recoveryQuestionKey);
+  }
+
+  Future<bool> verifyRecoveryAnswer(String answer) async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_recoveryAnswerKey);
+    if (stored == null) return false;
+    final hashed = md5.convert(utf8.encode(answer)).toString();
+    return hashed == stored;
+  }
+
+  Future<bool> hasRecoveryQA() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(_recoveryQuestionKey);
+  }
+
+  /// 清除密码及密保（用于找回密码后重置）
+  Future<void> clearPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pinKey);
   }
 
   // ===== 夜间模式 =====

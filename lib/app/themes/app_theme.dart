@@ -125,13 +125,13 @@ class AppTheme {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.darkCard,
+          fillColor: AppColors.darkInputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          hintStyle: TextStyle(color: AppColors.darkTextSecondary, fontSize: 15),
+          hintStyle: TextStyle(color: AppColors.darkTextHint, fontSize: 15),
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: AppColors.darkCard,

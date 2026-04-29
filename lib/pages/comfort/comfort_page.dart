@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:record/record.dart';
 import '../../app/themes/app_colors.dart';
 import '../../app/config/llm_config.dart';
 import '../../services/emotion_service.dart';
@@ -41,14 +40,11 @@ class _ComfortPageState extends State<ComfortPage> {
   bool _streamEnded = false;
   bool _cursorVisible = true;
 
-  // 语音输入
-  final AudioRecorder _audioRecorder = AudioRecorder();
-  bool _isRecording = false;
-
-  // 语音朗读
-  final AudioPlayer _ttsPlayer = AudioPlayer();
+  // 语音服务 (系统 ASR + 豆包 TTS)
   final SpeechService _speechService = SpeechService();
-  String? _playingMessageIndex; // 正在朗读的消息索引
+  final AudioPlayer _ttsPlayer = AudioPlayer();
+  bool _isRecording = false;
+  String? _playingMessageIndex;
 
   // 对话管理
   List<Conversation> _conversations = [];
@@ -159,8 +155,8 @@ class _ComfortPageState extends State<ComfortPage> {
     _typeTimer?.cancel();
     _streamDisplayTimer?.cancel();
     _cursorBlinkTimer?.cancel();
-    _audioRecorder.dispose();
     _ttsPlayer.dispose();
+    _speechService.dispose();
     _saveCurrentConversation(); // fire-and-forget
     super.dispose();
   }
@@ -364,20 +360,14 @@ class _ComfortPageState extends State<ComfortPage> {
   /// 切换录音状态
   Future<void> _toggleRecording() async {
     if (_isRecording) {
-      await _stopRecording();
+      await _speechService.stopListening();
+      setState(() => _isRecording = false);
     } else {
-      await _startRecording();
-    }
-  }
-
-  Future<void> _startRecording() async {
-    try {
-      final hasPermission = await _audioRecorder.hasPermission();
-      if (!hasPermission) {
+      if (!_speechService.sttAvailable) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('请先允许麦克风权限'),
+              content: const Text('当前设备不支持语音识别'),
               backgroundColor: AppColors.softOrange,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -386,118 +376,63 @@ class _ComfortPageState extends State<ComfortPage> {
         }
         return;
       }
-      await _audioRecorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.wav,
-          sampleRate: 16000,
-          numChannels: 1,
-        ),
-        path: '${Directory.systemTemp.path}/recording_${DateTime.now().microsecondsSinceEpoch}.wav',
-      );
-      setState(() => _isRecording = true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('录音启动失败: $e'),
-            backgroundColor: AppColors.softPink,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _stopRecording() async {
-    try {
-      final path = await _audioRecorder.stop();
-      setState(() => _isRecording = false);
-      if (path == null) return;
-
-      // 显示识别中状态
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                SizedBox(
-                  width: 14, height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                ),
-                SizedBox(width: 8),
-                Text('正在识别语音……'),
-              ],
-            ),
-            backgroundColor: AppColors.hazeBlue,
-            duration: const Duration(seconds: 10),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
-
-      final text = await _speechService.speechToText(path!);
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        if (text != null && text.isNotEmpty) {
+      final started = await _speechService.startListening((text) {
+        if (text.isNotEmpty) {
           _textController.text = text;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('识别: $text'),
+                backgroundColor: AppColors.calmGreen,
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          }
+        }
+      });
+      if (started) {
+        setState(() => _isRecording = true);
+      } else {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('识别结果: $text'),
-              backgroundColor: AppColors.calmGreen,
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('语音识别失败，请重试或手动输入'),
-              backgroundColor: AppColors.softOrange,
+              content: const Text('无法启动语音识别'),
+              backgroundColor: AppColors.softPink,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
       }
-    } catch (e) {
-      setState(() => _isRecording = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('识别出错: $e'),
-            backgroundColor: AppColors.softPink,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
     }
   }
 
-  /// 朗读AI消息
+  /// 朗读AI消息 (豆包TTS, 截取前300字)
   Future<void> _speakMessage(int index, String text) async {
-    // 如果正在朗读同一条消息，停止
     if (_playingMessageIndex == '$index') {
       await _ttsPlayer.stop();
       setState(() => _playingMessageIndex = null);
       return;
     }
 
-    // 停止当前播放
     await _ttsPlayer.stop();
 
-    // 去除 Markdown 符号，保留纯文本
-    final plainText = text
+    // 去除 Markdown 符号
+    var plainText = text
         .replaceAll(RegExp(r'[#*>`~_\[\]|]'), '')
-        .replaceAll(RegExp(r'\n{2,}'), '，')
-        .replaceAll('\n', '，')
-        .replaceAll('---', '，');
+        .replaceAll(RegExp(r'\n{2,}'), '。')
+        .replaceAll('\n', '。')
+        .replaceAll('---', '。')
+        .trim();
 
-    if (plainText.trim().isEmpty) return;
+    if (plainText.isEmpty) return;
+
+    // 截取前 300 字，避免太长导致生成慢
+    if (plainText.length > 300) {
+      plainText = plainText.substring(0, 300);
+    }
 
     setState(() => _playingMessageIndex = '$index');
 

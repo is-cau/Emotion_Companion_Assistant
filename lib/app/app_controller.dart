@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import '../services/storage_service.dart';
+import '../services/icon_service.dart';
 
 class AppController extends GetxController {
   final StorageService _storage = StorageService();
@@ -18,5 +19,6 @@ class AppController extends GetxController {
   Future<void> toggleDarkMode(bool value) async {
     isDarkMode.value = value;
     await _storage.setDarkMode(value);
+    IconService.setIcon(value);
   }
 }
