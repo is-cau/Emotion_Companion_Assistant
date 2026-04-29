@@ -9,6 +9,7 @@ import 'pages/treehole/treehole_page.dart';
 import 'pages/comfort/comfort_page.dart';
 import 'pages/privacy/privacy_page.dart';
 import 'services/llm_service.dart';
+import 'widgets/app_splash.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,8 +17,15 @@ void main() {
   runApp(const EmotionCompanionApp());
 }
 
-class EmotionCompanionApp extends StatelessWidget {
+class EmotionCompanionApp extends StatefulWidget {
   const EmotionCompanionApp({super.key});
+
+  @override
+  State<EmotionCompanionApp> createState() => _EmotionCompanionAppState();
+}
+
+class _EmotionCompanionAppState extends State<EmotionCompanionApp> {
+  bool _showSplash = true;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +36,9 @@ class EmotionCompanionApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: controller.isDarkMode.value ? ThemeMode.dark : ThemeMode.light,
-          home: const MainNavigation(),
+          home: _showSplash
+              ? AppSplash(onFinished: () => setState(() => _showSplash = false))
+              : const MainNavigation(),
           getPages: AppRoutes.routes,
         ));
   }
