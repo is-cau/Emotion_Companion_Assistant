@@ -76,8 +76,18 @@ class SpeechService {
       final audioBytes = await File(audioPath).readAsBytes();
       final requestId = _generateUuid();
 
+      // 生成 WebSocket 握手密钥
+      final wsKeyBytes = List<int>.generate(16, (_) => Random().nextInt(256));
+      final wsKey = base64Encode(wsKeyBytes);
+
       client = HttpClient();
       final wsRequest = await client.openUrl('GET', Uri.parse(_asrWsUrl));
+      // WebSocket 升级头
+      wsRequest.headers.add('Connection', 'Upgrade');
+      wsRequest.headers.add('Upgrade', 'websocket');
+      wsRequest.headers.add('Sec-WebSocket-Key', wsKey);
+      wsRequest.headers.add('Sec-WebSocket-Version', '13');
+      // 豆包 ASR 鉴权头
       wsRequest.headers.add('X-Api-App-Key', SpeechConfig.appId);
       wsRequest.headers.add('X-Api-Access-Key', SpeechConfig.accessToken);
       wsRequest.headers.add('X-Api-Resource-Id', _resourceId);

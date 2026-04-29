@@ -138,6 +138,32 @@ class _DreamPageState extends State<DreamPage> {
     }
   }
 
+  Future<void> _deleteAllHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除全部记录'),
+        content: const Text('确定要删除所有梦境解读历史记录吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除全部'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _storageService.clearAllDreamRecords();
+      await _loadHistory();
+      _clearInput();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -579,6 +605,18 @@ class _DreamPageState extends State<DreamPage> {
             color: AppColors.dreamyLavender.withOpacity(0.5),
           ),
         ),
+        const Spacer(),
+        if (_history.isNotEmpty)
+          GestureDetector(
+            onTap: _deleteAllHistory,
+            child: Text(
+              '删除全部',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.red.withOpacity(0.5),
+              ),
+            ),
+          ),
       ],
     );
   }
