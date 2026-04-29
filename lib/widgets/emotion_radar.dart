@@ -5,22 +5,24 @@ import '../models/emotion_models.dart';
 
 class EmotionRadarChart extends StatelessWidget {
   final EmotionRecord record;
+  final Color textColor;
 
-  const EmotionRadarChart({super.key, required this.record});
+  const EmotionRadarChart({super.key, required this.record, this.textColor = AppColors.textSecondary});
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: const Size(double.infinity, 120),
-      painter: _RadarPainter(record),
+      painter: _RadarPainter(record, textColor: textColor),
     );
   }
 }
 
 class _RadarPainter extends CustomPainter {
   final EmotionRecord record;
+  final Color textColor;
 
-  _RadarPainter(this.record);
+  _RadarPainter(this.record, {this.textColor = AppColors.textSecondary});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -30,7 +32,7 @@ class _RadarPainter extends CustomPainter {
     final dimensions = [
       ('悲伤', record.sadness, AppColors.softPink),
       ('焦虑', record.anxiety, AppColors.softOrange),
-      ('愤怒', record.anger, Colors.redAccent.shade100),
+      ('愤怒', record.anger, AppColors.angerRed),
       ('孤独', record.loneliness, AppColors.gentlePurple),
       ('开心', record.happiness, AppColors.calmGreen),
       ('平静', record.calmness, AppColors.lightCyan),
@@ -100,7 +102,7 @@ class _RadarPainter extends CustomPainter {
         text: TextSpan(
           text: dimensions[i].$1,
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: textColor,
             fontSize: 10,
           ),
         ),

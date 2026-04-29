@@ -149,9 +149,7 @@ class HomePageState extends State<HomePage> {
                     const SizedBox(height: 4),
                     Text(
                       '我是你的情绪陪伴师',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
@@ -217,6 +215,7 @@ class HomePageState extends State<HomePage> {
                             height: 120,
                             child: EmotionRadarChart(
                               record: todayAggregated!,
+                              textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -314,7 +313,7 @@ class HomePageState extends State<HomePage> {
     final colors = {
       '悲伤': AppColors.softPink,
       '焦虑': AppColors.softOrange,
-      '愤怒': Colors.redAccent.shade100,
+      '愤怒': AppColors.angerRed,
       '孤独': AppColors.gentlePurple,
       '开心': AppColors.calmGreen,
       '平静': AppColors.lightCyan,
@@ -360,7 +359,7 @@ class HomePageState extends State<HomePage> {
           final colors = {
             '悲伤': AppColors.softPink,
             '焦虑': AppColors.softOrange,
-            '愤怒': Colors.redAccent.shade100,
+            '愤怒': AppColors.angerRed,
             '孤独': AppColors.gentlePurple,
             '开心': AppColors.calmGreen,
             '平静': AppColors.lightCyan,
@@ -400,7 +399,7 @@ class HomePageState extends State<HomePage> {
               const SizedBox(height: 4),
               Text(
                 _formatTimelineDate(r.createdAt),
-                style: TextStyle(fontSize: 10, color: AppColors.textHint),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
               ),
             ],
           );

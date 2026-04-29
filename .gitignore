@@ -44,6 +44,30 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# confige
+# iOS & macOS
+**/ios/Pods/
+**/macos/Pods/
+**/ios/.symlinks/
+**/macos/.symlinks/
+
+# Windows
+/windows/flutter/ephemeral/
+
+# Web
+/web/.dart_tool/
+
+# Linux
+/linux/flutter/ephemeral/
+
+# Secrets & sensitive configs
+*.jks
+*.keystore
+*.key
+google-services.json
+GoogleService-Info.plist
+.env
+.env.*
+
+# Config files with API keys
 lib/app/config/llm_config.dart
 lib/app/config/speech_config.dart

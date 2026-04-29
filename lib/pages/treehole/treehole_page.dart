@@ -90,7 +90,7 @@ class TreeholePageState extends State<TreeholePage> {
                   dialogCancelled = true;
                   Navigator.of(ctx).pop();
                 },
-                child: Icon(Icons.close, size: 20, color: AppColors.textHint),
+                child: Icon(Icons.close, size: 20, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3)),
               ),
             ],
           ),
@@ -295,7 +295,7 @@ class TreeholePageState extends State<TreeholePage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.edit_note, size: 48, color: AppColors.textHint),
+                        Icon(Icons.edit_note, size: 48, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
                         const SizedBox(height: 12),
                         Text(
                           '还没有记录，开始写下你的心事吧',
@@ -343,7 +343,7 @@ class TreeholePageState extends State<TreeholePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lock, size: 64, color: AppColors.textHint),
+              Icon(Icons.lock, size: 64, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
               const SizedBox(height: 20),
               Text('树洞已锁定', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
@@ -418,13 +418,13 @@ class TreeholePageState extends State<TreeholePage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: isActive ? AppColors.hazeBlue : AppColors.textHint),
+            Icon(icon, size: 14, color: isActive ? AppColors.hazeBlue : Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isActive ? AppColors.hazeBlue : AppColors.textHint,
+                color: isActive ? AppColors.hazeBlue : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
               ),
             ),
           ],
@@ -437,7 +437,7 @@ class TreeholePageState extends State<TreeholePage> {
     final emotionColors = {
       '悲伤': AppColors.softPink,
       '焦虑': AppColors.softOrange,
-      '愤怒': Colors.redAccent.shade100,
+      '愤怒': AppColors.angerRed,
       '孤独': AppColors.gentlePurple,
       '开心': AppColors.calmGreen,
       '平静': AppColors.lightCyan,
@@ -497,13 +497,13 @@ class TreeholePageState extends State<TreeholePage> {
                 children: [
                   Text(
                     _formatDate(record.createdAt),
-                    style: TextStyle(fontSize: 11, color: AppColors.textHint),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
                   ),
                   if (!isPending) ...[
                     const SizedBox(width: 4),
                     GestureDetector(
                       onTap: () => _deleteRecord(record.id),
-                      child: Icon(Icons.close, size: 16, color: AppColors.textHint.withValues(alpha: 0.6)),
+                      child: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
                     ),
                   ],
                 ],
@@ -531,7 +531,7 @@ class TreeholePageState extends State<TreeholePage> {
                 const SizedBox(width: 8),
                 Text(
                   '正在AI深度分析中，请稍候……',
-                  style: TextStyle(fontSize: 12, color: AppColors.textHint),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
@@ -663,7 +663,7 @@ class TreeholePageState extends State<TreeholePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('请输入4-6位数字密码', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+              Text('请输入4-6位数字密码', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
@@ -717,7 +717,7 @@ class TreeholePageState extends State<TreeholePage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('请再次输入密码以确认', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+            Text('请再次输入密码以确认', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
@@ -768,7 +768,7 @@ class TreeholePageState extends State<TreeholePage> {
           children: [
             Text(
               '设置密保问题，忘记密码时可通过回答此问题找回',
-              style: TextStyle(fontSize: 13, color: AppColors.textHint),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -859,7 +859,7 @@ class TreeholePageState extends State<TreeholePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('请回答以下密保问题：', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+              Text('请回答以下密保问题：', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,

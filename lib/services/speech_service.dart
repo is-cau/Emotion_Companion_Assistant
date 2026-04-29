@@ -9,7 +9,7 @@ import '../app/config/speech_config.dart';
 class SpeechService {
   // ==================== 豆包 ASR (WebSocket 流式识别) ====================
   static const _asrWsUrl = 'https://openspeech.bytedance.com/api/v3/sauc/bigmodel';
-  static const _resourceId = 'volc.seedasr.sauc.duration';
+  static const _resourceId = 'volc.bigasr.sauc.duration';
 
   final AudioRecorder _recorder = AudioRecorder();
   bool _isRecording = false;
@@ -70,34 +70,51 @@ class SpeechService {
   }
 
   Future<String?> _sendToAsrWs(String audioPath) async {
+    HttpClient? client;
+    WebSocket? ws;
     try {
       final audioBytes = await File(audioPath).readAsBytes();
-      final connectId = _generateUuid();
+      final requestId = _generateUuid();
 
-      // 使用 HttpClient 以支持自定义 Header 的 WebSocket 升级
-      final client = HttpClient();
+      client = HttpClient();
       final wsRequest = await client.openUrl('GET', Uri.parse(_asrWsUrl));
       wsRequest.headers.add('X-Api-App-Key', SpeechConfig.appId);
       wsRequest.headers.add('X-Api-Access-Key', SpeechConfig.accessToken);
       wsRequest.headers.add('X-Api-Resource-Id', _resourceId);
-      wsRequest.headers.add('X-Api-Connect-Id', connectId);
+      wsRequest.headers.add('X-Api-Request-Id', requestId);
 
       final wsResponse = await wsRequest.close();
+      print('ASR WS upgrade status: ${wsResponse.statusCode} ${wsResponse.reasonPhrase}');
+      if (wsResponse.statusCode != 101) {
+        final body = await wsResponse.transform(utf8.decoder).join();
+        print('ASR WS upgrade failed, body: $body');
+        client.close();
+        return null;
+      }
+
       final socket = await wsResponse.detachSocket();
-      final ws = WebSocket.fromUpgradedSocket(socket, serverSide: false);
+      ws = WebSocket.fromUpgradedSocket(socket, serverSide: false);
 
       final resultCompleter = Completer<String?>();
       final textBuffer = StringBuffer();
+      bool startConfirmed = false;
 
       ws.listen(
         (data) {
+          print('ASR WS recv type=${data.runtimeType}');
           if (data is String) {
             try {
               final msg = jsonDecode(data);
               print('ASR WS message: $msg');
-              if (msg['code'] != null && msg['code'] != 0) {
-                print('ASR WS error: ${msg['message']}');
+              final code = msg['code'];
+              if (code != null && code != 0 && code != 1000) {
+                print('ASR WS error code=$code message=${msg['message']}');
                 if (!resultCompleter.isCompleted) resultCompleter.complete(null);
+                return;
+              }
+              if (msg['type'] == 'start_result') {
+                startConfirmed = true;
+                print('ASR WS start confirmed');
               }
               if (msg['payload_msg'] != null) {
                 final payload = msg['payload_msg'];
@@ -111,11 +128,15 @@ class SpeechService {
                   resultCompleter.complete(textBuffer.toString());
                 }
               }
-            } catch (_) {}
+            } catch (e) {
+              print('ASR WS parse error: $e raw=$data');
+            }
+          } else if (data is List<int>) {
+            print('ASR WS recv binary: ${data.length} bytes');
           }
         },
         onError: (e) {
-          print('ASR WS error: $e');
+          print('ASR WS stream error: $e');
           if (!resultCompleter.isCompleted) resultCompleter.complete(null);
         },
         onDone: () {
@@ -140,11 +161,19 @@ class SpeechService {
         },
       });
       ws.add(startMsg);
-      print('ASR WS sent: $startMsg');
+      print('ASR WS sent start: $startMsg');
+
+      // 等待服务器确认 start (最多 2 秒)
+      for (int i = 0; i < 20 && !startConfirmed && !resultCompleter.isCompleted; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (!startConfirmed) {
+        print('ASR WS start not confirmed, server may have rejected');
+      }
 
       // 分块发送音频数据
-      const chunkSize = 3200; // 100ms at 16kHz 16bit mono
-      for (int i = 0; i < audioBytes.length; i += chunkSize) {
+      const chunkSize = 3200;
+      for (int i = 0; i < audioBytes.length && !resultCompleter.isCompleted; i += chunkSize) {
         final end = (i + chunkSize).clamp(0, audioBytes.length);
         ws.add(audioBytes.sublist(i, end));
         await Future.delayed(const Duration(milliseconds: 10));
@@ -154,7 +183,7 @@ class SpeechService {
       // 发送结束消息
       final endMsg = jsonEncode({'type': 'end'});
       ws.add(endMsg);
-      print('ASR WS sent: $endMsg');
+      print('ASR WS sent end: $endMsg');
 
       final result =
           await resultCompleter.future.timeout(const Duration(seconds: 15));
@@ -163,6 +192,8 @@ class SpeechService {
       return result;
     } catch (e) {
       print('ASR WS exception: $e');
+      try { await ws?.close(); } catch (_) {}
+      try { client?.close(); } catch (_) {}
       return null;
     }
   }

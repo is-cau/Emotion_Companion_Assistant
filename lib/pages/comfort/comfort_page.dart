@@ -762,10 +762,10 @@ class _ComfortPageState extends State<ComfortPage> {
                             ),
                             subtitle: Text(
                               '${conv.messages.length} 条消息 · ${conv.updatedAt.month}月${conv.updatedAt.day}日',
-                              style: TextStyle(fontSize: 11, color: AppColors.textHint),
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
                             ),
                             trailing: IconButton(
-                              icon: Icon(Icons.close, size: 16, color: AppColors.textHint.withValues(alpha: 0.5)),
+                              icon: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
                               onPressed: () => _deleteConversation(conv),
                             ),
                             onTap: () => _switchConversation(conv),
@@ -924,7 +924,7 @@ class _ComfortPageState extends State<ComfortPage> {
                               size: 16,
                               color: _playingMessageIndex == '$index'
                                   ? AppColors.hazeBlue
-                                  : AppColors.textHint,
+                                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                             ),
                           ),
                         ),
@@ -969,7 +969,7 @@ class _ComfortPageState extends State<ComfortPage> {
         const SizedBox(width: 6),
         Text(
           '正在思考中',
-          style: TextStyle(fontSize: 11, color: AppColors.textHint),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
         ),
       ],
     );

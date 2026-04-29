@@ -71,7 +71,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                         const SizedBox(height: 20),
                         SizedBox(
                           height: 200,
-                          child: EmotionRadarChart(record: latestRecord),
+                          child: EmotionRadarChart(record: latestRecord, textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -93,7 +93,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                         const SizedBox(height: 16),
                         _buildEmotionBar('悲伤', latestRecord.sadness, AppColors.softPink),
                         _buildEmotionBar('焦虑', latestRecord.anxiety, AppColors.softOrange),
-                        _buildEmotionBar('愤怒', latestRecord.anger, Colors.redAccent.shade100),
+                        _buildEmotionBar('愤怒', latestRecord.anger, AppColors.angerRed),
                         _buildEmotionBar('孤独', latestRecord.loneliness, AppColors.gentlePurple),
                         _buildEmotionBar('开心', latestRecord.happiness, AppColors.calmGreen),
                         _buildEmotionBar('平静', latestRecord.calmness, AppColors.lightCyan),
@@ -212,9 +212,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 80),
-          Icon(Icons.analytics_outlined, size: 64, color: AppColors.textHint),
+          Icon(Icons.analytics_outlined, size: 64, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
           const SizedBox(height: 16),
-          Text('还没有情绪数据', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.textHint)),
+          Text('还没有情绪数据', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
           const SizedBox(height: 8),
           Text('去树洞写下你的心事，我会为你分析', style: Theme.of(context).textTheme.bodySmall),
         ],
@@ -229,7 +229,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
         children: [
           SizedBox(
             width: 40,
-            child: Text(label, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -260,7 +260,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
             width: 36,
             child: Text(
               '${(value * 100).toInt()}%',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
               textAlign: TextAlign.right,
             ),
           ),
@@ -319,7 +319,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
           final emotionColors = {
             '悲伤': AppColors.softPink,
             '焦虑': AppColors.softOrange,
-            '愤怒': Colors.redAccent.shade100,
+            '愤怒': AppColors.angerRed,
             '孤独': AppColors.gentlePurple,
             '开心': AppColors.calmGreen,
             '平静': AppColors.lightCyan,
@@ -360,7 +360,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
               const SizedBox(height: 6),
               Text(
                 '${r.createdAt.month}/${r.createdAt.day}',
-                style: TextStyle(fontSize: 10, color: AppColors.textHint),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
               ),
             ],
           );

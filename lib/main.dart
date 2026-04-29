@@ -125,6 +125,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
     final isActive = _currentIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inactiveColor = isDark ? AppColors.darkTextHint : AppColors.textHint;
     return GestureDetector(
       onTap: () => _onTabChanged(index),
       behavior: HitTestBehavior.opaque,
@@ -139,7 +141,7 @@ class _MainNavigationState extends State<MainNavigation> {
           children: [
             Icon(
               isActive ? activeIcon : icon,
-              color: isActive ? AppColors.hazeBlue : AppColors.textHint,
+              color: isActive ? AppColors.hazeBlue : inactiveColor,
               size: 22,
             ),
             const SizedBox(height: 2),
@@ -147,7 +149,7 @@ class _MainNavigationState extends State<MainNavigation> {
               label,
               style: TextStyle(
                 fontSize: 11,
-                color: isActive ? AppColors.hazeBlue : AppColors.textHint,
+                color: isActive ? AppColors.hazeBlue : inactiveColor,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

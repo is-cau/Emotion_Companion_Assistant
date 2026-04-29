@@ -160,7 +160,7 @@ class PrivacyPageState extends State<PrivacyPage> {
                       icon: Icons.delete_outline,
                       title: '一键清空所有记录',
                       subtitle: '删除所有情绪日记，不可恢复',
-                      color: Colors.redAccent.shade100,
+                      color: AppColors.angerRed,
                       onTap: _confirmClearAll,
                     ),
                     const Divider(height: 1, indent: 56),
@@ -238,7 +238,7 @@ class PrivacyPageState extends State<PrivacyPage> {
     return SwitchListTile(
       secondary: Icon(icon, color: AppColors.hazeBlue, size: 22),
       title: Text(title, style: const TextStyle(fontSize: 15)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+      subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
       value: value,
       onChanged: onChanged,
       activeColor: AppColors.hazeBlue,
@@ -255,8 +255,8 @@ class PrivacyPageState extends State<PrivacyPage> {
     return ListTile(
       leading: Icon(icon, color: color, size: 22),
       title: Text(title, style: TextStyle(fontSize: 15, color: color)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-      trailing: Icon(Icons.chevron_right, color: AppColors.textHint, size: 18),
+      subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+      trailing: Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3), size: 18),
       onTap: onTap,
     );
   }
@@ -416,7 +416,7 @@ class PrivacyPageState extends State<PrivacyPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('请回答以下密保问题：', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+              Text('请回答以下密保问题：', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -499,7 +499,7 @@ class PrivacyPageState extends State<PrivacyPage> {
                 ),
               );
             },
-            child: Text('确认清空', style: TextStyle(color: Colors.redAccent.shade100)),
+            child: Text('确认清空', style: TextStyle(color: AppColors.angerRed)),
           ),
         ],
       ),
@@ -646,7 +646,7 @@ class PrivacyPageState extends State<PrivacyPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('请回答以下密保问题：', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+              Text('请回答以下密保问题：', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -720,7 +720,7 @@ class PrivacyPageState extends State<PrivacyPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('请输入4-6位数字密码', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+              Text('请输入4-6位数字密码', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
@@ -773,7 +773,7 @@ class PrivacyPageState extends State<PrivacyPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('请再次输入密码以确认', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+            Text('请再次输入密码以确认', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
@@ -824,7 +824,7 @@ class PrivacyPageState extends State<PrivacyPage> {
           children: [
             Text(
               '设置密保问题，忘记密码时可通过回答此问题找回',
-              style: TextStyle(fontSize: 13, color: AppColors.textHint),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(

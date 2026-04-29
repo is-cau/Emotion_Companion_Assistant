@@ -55,7 +55,7 @@ Future<void> showLlmConfigDialog(BuildContext context) async {
               children: [
                 Text(
                   '填写你自己的大模型API信息，留空则使用默认配置。\n支持 OpenAI 兼容接口（DeepSeek、Qwen 等）。',
-                  style: TextStyle(fontSize: 12, color: AppColors.textHint, height: 1.5),
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(height: 1.5),
                 ),
                 const SizedBox(height: 16),
 
@@ -68,7 +68,7 @@ Future<void> showLlmConfigDialog(BuildContext context) async {
                   onChanged: (_) => setDialogState(() { testPassed = false; inlineError = null; }),
                   decoration: InputDecoration(
                     hintText: '例如: https://api.openai.com/v1',
-                    hintStyle: TextStyle(fontSize: 13, color: AppColors.textHint.withValues(alpha: 0.6)),
+                    hintStyle: Theme.of(ctx).inputDecorationTheme.hintStyle?.copyWith(fontSize: 13),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -87,7 +87,7 @@ Future<void> showLlmConfigDialog(BuildContext context) async {
                   onChanged: (_) => setDialogState(() { testPassed = false; inlineError = null; }),
                   decoration: InputDecoration(
                     hintText: '请输入你的 API Key',
-                    hintStyle: TextStyle(fontSize: 13, color: AppColors.textHint.withValues(alpha: 0.6)),
+                    hintStyle: Theme.of(ctx).inputDecorationTheme.hintStyle?.copyWith(fontSize: 13),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -109,7 +109,7 @@ Future<void> showLlmConfigDialog(BuildContext context) async {
                   onChanged: (_) => setDialogState(() { testPassed = false; inlineError = null; }),
                   decoration: InputDecoration(
                     hintText: '例如: deepseek-chat, gpt-4o',
-                    hintStyle: TextStyle(fontSize: 13, color: AppColors.textHint.withValues(alpha: 0.6)),
+                    hintStyle: Theme.of(ctx).inputDecorationTheme.hintStyle?.copyWith(fontSize: 13),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -236,11 +236,11 @@ Future<void> showLlmConfigDialog(BuildContext context) async {
                         icon: Icon(
                           isTesting ? Icons.hourglass_top : Icons.wifi_find,
                           size: 16,
-                          color: isTesting ? AppColors.textHint : AppColors.calmGreen,
+                          color: isTesting ? Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3) : AppColors.calmGreen,
                         ),
                         label: Text(
                           '测试连接',
-                          style: TextStyle(fontSize: 13, color: isTesting ? AppColors.textHint : AppColors.calmGreen),
+                          style: TextStyle(fontSize: 13, color: isTesting ? Theme.of(ctx).colorScheme.onSurface.withOpacity(0.5) : AppColors.calmGreen),
                         ),
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: AppColors.calmGreen.withValues(alpha: isTesting ? 0.2 : 0.5)),
@@ -306,14 +306,14 @@ Future<void> showLlmConfigDialog(BuildContext context) async {
                         '恢复默认',
                         style: TextStyle(
                           fontSize: 12,
-                          color: (isTesting || !hasConfig) ? AppColors.textHint.withValues(alpha: 0.3) : AppColors.textHint,
+                          color: (isTesting || !hasConfig) ? Theme.of(ctx).colorScheme.onSurface.withOpacity(0.15) : Theme.of(ctx).colorScheme.onSurface.withOpacity(0.5),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     TextButton(
                       onPressed: isTesting ? null : () => Navigator.pop(ctx),
-                      child: Text('取消', style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                      child: Text('取消', style: Theme.of(ctx).textTheme.bodySmall?.copyWith(fontSize: 12)),
                     ),
                   ],
                 ),

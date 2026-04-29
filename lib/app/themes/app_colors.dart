@@ -11,6 +11,7 @@ class AppColors {
   static const Color calmGreen = Color(0xFFA8C5A0);
   static const Color softOrange = Color(0xFFE0B89E);
   static const Color dreamyLavender = Color(0xFFC8B5D0);
+  static const Color angerRed = Color(0xFFE8A8A8);
 
   // 文字颜色
   static const Color textPrimary = Color(0xFF4A4A4A);

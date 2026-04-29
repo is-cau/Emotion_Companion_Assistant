@@ -296,9 +296,7 @@ class _DreamPageState extends State<DreamPage> {
           const SizedBox(height: 8),
           Text(
             '梦是心灵的信使，让我们耐心聆听它的密语',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
@@ -329,9 +327,7 @@ class _DreamPageState extends State<DreamPage> {
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             OutlinedButton(
@@ -438,7 +434,6 @@ class _DreamPageState extends State<DreamPage> {
                     _dreamText,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontStyle: FontStyle.italic,
-                          color: AppColors.textSecondary,
                           height: 1.7,
                         ),
                   ),
@@ -470,7 +465,6 @@ class _DreamPageState extends State<DreamPage> {
                     ),
                 em: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontStyle: FontStyle.italic,
-                      color: AppColors.textSecondary,
                     ),
                 listBullet: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.7),
                 listBulletPadding: const EdgeInsets.only(left: 4, right: 12, top: 4),
@@ -535,15 +529,12 @@ class _DreamPageState extends State<DreamPage> {
                 const SizedBox(height: 12),
                 Text(
                   '还没有解读过梦境',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textHint,
-                      ),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '写下你的第一个梦，让潜意识的密语被温柔聆听',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textHint,
                         fontSize: 12,
                       ),
                 ),
@@ -578,9 +569,7 @@ class _DreamPageState extends State<DreamPage> {
         const SizedBox(width: 8),
         Text(
           '历史记录',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+          style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(width: 8),
         Text(
@@ -636,7 +625,6 @@ class _DreamPageState extends State<DreamPage> {
                     Text(
                       record.dreamText,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textHint,
                             fontSize: 12,
                           ),
                       maxLines: 1,
@@ -651,15 +639,14 @@ class _DreamPageState extends State<DreamPage> {
                 children: [
                   Text(
                     _formatDate(record.createdAt),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textHint,
-                    ),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 11,
+                        ),
                   ),
                   const SizedBox(height: 4),
                   GestureDetector(
                     onTap: () => _deleteHistoryItem(record.id),
-                    child: Icon(Icons.close, size: 16, color: AppColors.textHint.withOpacity(0.5)),
+                    child: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
                   ),
                 ],
               ),

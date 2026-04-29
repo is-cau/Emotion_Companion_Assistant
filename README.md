@@ -2,7 +2,7 @@
 
 一款轻量化治愈系心理健康情绪陪伴 Flutter 应用。
 
-**核心功能：** 情绪分析 · 匿名树洞倾诉 · AI 暖心安慰 · 语音对话
+**核心功能：** 情绪分析 · 匿名树洞倾诉 · AI 暖心安慰 · AI 梦境解读 · 语音对话
 
 ## 功能特性
 
@@ -11,7 +11,7 @@
 - 今日情绪状态总览（聚合当天所有日记的综合分析）
 - 呼吸粒子动画倾诉按钮（HeartbeatBreathButton）
 - 近期情绪波动柱状图（相对日期：今天/昨天/周X）
-- 快捷入口：AI 暖心安慰、情绪分析、隐私中心
+- 快捷入口（2×2 网格）：AI 暖心安慰、情绪分析、隐私中心、AI 梦境解读
 
 ### 情绪树洞
 - 匿名文字倾诉，支持多行输入
@@ -37,6 +37,16 @@
 - 语音输入（系统 ASR，中文识别）
 - AI 回复语音朗读（豆包 TTS，火山方舟语音合成 2.0）
 - 深呼吸引导 + 晚安语录快捷入口
+- 右上角菜单支持切换大模型模式、音色、新建对话
+
+### AI 梦境解读
+- 输入梦境片段，AI 从 5 个维度深度解析
+- 维度：梦境主题与象征、情绪分析、心理学解读、生活关联、建议与引导
+- AI 自动生成诗意梦境标题
+- Markdown 格式化渲染分析结果
+- 梦境解读历史记录持久化（支持查看、删除）
+- 空状态引导提示
+- 错误重试机制
 
 ### 情绪分析报告
 - 7 维度情绪雷达图（悲伤 / 焦虑 / 愤怒 / 孤独 / 开心 / 平静 / 压抑）
@@ -48,8 +58,9 @@
 - 树洞密码锁定（首次设置 → 专属密码提示；关闭需验证密码）
 - 密码修改（无密码直接设置；有密码先验证旧密码再设新密码）
 - 密保问题找回密码（二级安保）
-- 夜间护眼模式（全局切换，即时生效，持久化存储）
+- 夜间护眼模式（全局切换，即时生效，持久化存储，所有页面适配暗色主题）
 - 一键清空所有记录
+- 大模型自定义配置（支持 OpenAI 兼容 API）
 - 隐私政策说明
 
 ## 技术栈
@@ -58,18 +69,19 @@
 |------|------|
 | 框架 | Flutter 3.41 |
 | 语言 | Dart（SDK ^3.11.5） |
-| UI | Material 3 + 莫兰迪低饱和度配色 |
+| UI | Material 3 + 莫兰迪低饱和度配色 + 明暗双主题 |
 | 状态管理 | GetX（主题切换） + GlobalKey（跨页同步） |
 | HTTP | http ^1.6.0（OpenAI 兼容格式 API） |
 | 本地存储 | SharedPreferences + MD5 密码加密 |
-| 图表 | fl_chart ^0.69.0（雷达图） |
-| Markdown | flutter_markdown ^0.7.4 |
+| 图表 | CustomPaint 情绪雷达图 |
+| Markdown | flutter_markdown ^0.7.4（对话 + 梦境解读） |
 | 音频 | audioplayers ^6.1.0（白噪音 + TTS 播放） |
 | 语音识别 | speech_to_text ^7.3.0（系统 ASR） |
 | 字体 | google_fonts ^6.2.1 |
 | SVG | flutter_svg ^2.0.10 |
 | 工具 | intl ^0.19.0 · crypto ^3.0.6 |
 | 情感分析 | 本地关键词权重 + 大模型深度分析 |
+| 梦境分析 | 大模型多维度梦境解读 |
 
 ## 项目结构
 
@@ -82,27 +94,30 @@ lib/
 │   │   └── speech_config.dart          # 豆包语音配置（TTS + ASR）
 │   ├── routes/app_routes.dart          # 路由
 │   ├── themes/
-│   │   ├── app_colors.dart             # 莫兰迪配色定义
-│   │   └── app_theme.dart              # 明/暗双主题
+│   │   ├── app_colors.dart             # 莫兰迪配色定义（含暗色令牌）
+│   │   └── app_theme.dart              # 明/暗双主题（完整 TextTheme + 组件主题）
 │   └── app_controller.dart             # GetX 全局状态（主题切换）
 ├── pages/
-│   ├── home/home_page.dart             # 首页
-│   ├── treehole/treehole_page.dart     # 情绪树洞
-│   ├── comfort/comfort_page.dart       # AI 暖心安慰
-│   ├── analysis/analysis_page.dart     # 情绪分析报告
-│   └── privacy/privacy_page.dart       # 隐私中心
+│   ├── home/home_page.dart             # 首页（问候 + 情绪概览 + 快捷入口）
+│   ├── treehole/treehole_page.dart     # 情绪树洞（倾诉 + AI 分析 + 日记 + 白噪音）
+│   ├── comfort/comfort_page.dart       # AI 暖心安慰（流式对话 + 语音 + 音色切换）
+│   ├── analysis/analysis_page.dart     # 情绪分析报告（雷达图 + 建议 + 趋势）
+│   ├── dream/dream_page.dart           # AI 梦境解读（多维度分析 + 历史记录）
+│   └── privacy/privacy_page.dart       # 隐私中心（密码/密保/暗色模式/清空数据）
 ├── widgets/
-│   ├── emotion_radar.dart              # 情绪雷达图
-│   └── heartbeat_breath_button.dart    # 呼吸粒子动画按钮
+│   ├── emotion_radar.dart              # 情绪雷达图（CustomPaint）
+│   ├── heartbeat_breath_button.dart    # 呼吸粒子动画按钮
+│   ├── app_splash.dart                 # 启动闪屏动画
+│   └── llm_config_dialog.dart          # 大模型配置弹窗
 ├── services/
-│   ├── llm_service.dart                # 大模型 API（流式/普通/情绪分析/标题生成）
+│   ├── llm_service.dart                # 大模型 API（对话/流式/情绪分析/梦境解读/标题生成）
 │   ├── emotion_service.dart            # 本地情感分析（关键词权重算法）
 │   ├── ai_comfort_service.dart         # 本地预设安慰话术（降级备选）
 │   ├── speech_service.dart             # 语音服务（系统 ASR + 豆包 TTS）
-│   ├── storage_service.dart            # 本地存储（记录/对话/密码/密保/主题）
+│   ├── storage_service.dart            # 本地存储（记录/对话/梦境/密码/密保/主题/LLM配置）
 │   └── icon_service.dart               # Android 动态图标切换
 └── models/
-    └── emotion_models.dart             # EmotionRecord / ChatMessage / Conversation
+    └── emotion_models.dart             # EmotionRecord / DreamRecord / ChatMessage / Conversation
 ```
 
 ## 快速开始
@@ -117,7 +132,7 @@ static const String apiKey = 'sk-xxxxxxxxxxxxxxxx';
 static const String model = 'gpt-3.5-turbo';
 ```
 
-支持所有 OpenAI 兼容格式的 API（DeepSeek / Qwen / GLM 等）。未配置时自动使用本地预设话术。
+支持所有 OpenAI 兼容格式的 API（DeepSeek / Qwen / GLM 等）。未配置时自动使用本地预设话术。也可在 APP 内「隐私中心 → 大模型配置」中自定义。
 
 ### 2. 配置语音服务（可选）
 
