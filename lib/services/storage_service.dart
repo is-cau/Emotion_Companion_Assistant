@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import '../models/emotion_models.dart';
+import '../app/config/speech_config.dart';
 
 class StorageService {
   static const String _recordsKey = 'emotion_records';
@@ -11,6 +12,7 @@ class StorageService {
   static const String _recoveryAnswerKey = 'treehole_recovery_answer';
   static const String _conversationsKey = 'conversations';
   static const String _activeConvKey = 'active_conversation_id';
+  static const String _ttsVoiceTypeKey = 'tts_voice_type';
 
   Future<List<EmotionRecord>> getAllRecords() async {
     final prefs = await SharedPreferences.getInstance();
@@ -176,5 +178,17 @@ class StorageService {
     } else {
       await prefs.setString(_activeConvKey, id);
     }
+  }
+
+  // ===== TTS 音色偏好 =====
+
+  Future<String> getTtsVoiceType() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_ttsVoiceTypeKey) ?? SpeechConfig.defaultVoiceType;
+  }
+
+  Future<void> setTtsVoiceType(String voiceType) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_ttsVoiceTypeKey, voiceType);
   }
 }

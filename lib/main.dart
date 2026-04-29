@@ -98,7 +98,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, '首页'),
                 _buildNavItem(1, Icons.edit_note_outlined, Icons.edit_note_rounded, '树洞'),
                 _buildNavItem(2, Icons.auto_awesome_outlined, Icons.auto_awesome, '安慰'),
-                _buildNavItem(3, Icons.shield_outlined, Icons.shield, '我的'),
+                _buildNavItem(3, Icons.person_outlined, Icons.person, '我的'),
               ],
             ),
           ),

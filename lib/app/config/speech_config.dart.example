@@ -1,42 +1,41 @@
 /// 火山引擎语音服务配置
 /// 请在此处填写你购买的语音API信息
-/*class SpeechConfig {
-  /// ========== 必填 ==========
+/// 火山方舟 - 豆包语音配置
+class SpeechConfig {
+  /// 火山方舟 API Key (Ark 平台鉴权)
+  /// 控制台 → 火山方舟 → API Key 管理 → 格式: api-key-xxxxx
+  static const String arkApiKey = 'api-key-xxxxx';
 
-  /// 火山引擎应用 ID (App ID)
-  static const String appId = 'api-key-xxxxxxxxxxxxxx';
+  /// 豆包语音 App ID
+  static const String appId = 'xxxxxxxxxxx';
 
-  /// 火山引擎访问令牌 (Access Token)
-  static const String accessToken = '5de62ee2-xxxxxxxxxxxxxx';
+  /// 豆包语音 Access Token (AK)
+  static const String accessToken = 'xxxxxxxxxxxxxxxxxxxxxx';
 
-  /// ========== 可选 ==========
+  /// 豆包语音 Secret Key (SK) - 用于签名鉴权
+  static const String secretKey = 'xxxxxxxxxxxxxxxxxxxxxx';
 
-  /// TTS 音色类型
-  /// 常见音色:
-  ///   zh_female_qingxin  - 女声·清新
-  ///   zh_female_tianmei  - 女声·甜美
-  ///   zh_male_wenrou     - 男声·温柔
-  ///   zh_male_qingse     - 男声·青涩
-  /// 完整音色列表见火山引擎文档
-  static const String ttsVoiceType = 'zh_female_qingxin';
+  /// TTS 模型 (豆包语音合成2.0)
+  static const String ttsModel = 'doubao-tts-2.0';
 
-  /// TTS 语速 (0.5-2.0, 默认1.0)
-  static const double ttsSpeed = 1.0;
+  /// TTS 音色常量
+  static const String voiceTypeFemale = 'zh_female_vv_uranus_bigtts';   // vivi 2.0 (清新女声)
+  static const String voiceTypeFemale2 = 'saturn_zh_female_cancan_tob'; // 知性灿灿 (知性女声)
+  static const String voiceTypeMale = 'zh_male_m191_uranus_bigtts';     // 云舟 (沉稳男声)
 
-  /// TTS 音量 (0.5-2.0, 默认1.0)
-  static const double ttsVolume = 1.0;
+  /// 音色显示名映射
+  static const Map<String, String> voiceTypeLabels = {
+    'zh_female_vv_uranus_bigtts': 'vivi 2.0 (清新女声)',
+    'saturn_zh_female_cancan_tob': '知性灿灿 (知性女声)',
+    'zh_male_m191_uranus_bigtts': '云舟 (沉稳男声)',
+  };
 
-  /// TTS 音高 (0.5-2.0, 默认1.0)
-  static const double ttsPitch = 1.0;
+  /// 默认音色
+  static const String defaultVoiceType = voiceTypeFemale;
 
-  /// TTS API 地址
-  static const String ttsBaseUrl = 'https://openspeech.bytedance.com/api/v1/tts';
+  /// TTS 语速 (0.5-2.0)
+  static const double ttsSpeed = 0.8;
 
-  /// ASR 语音识别 API 地址
-  static const String asrBaseUrl = 'https://openspeech.bytedance.com/api/v1/asr';
-
-  /// 语音识别资源类型 (根据购买的服务填写)
-  /// 常见: volc.bigasr.sauc.duration 或 volc.openspeech.asr
-  static const String asrResourceId = 'volc.bigasr.sauc.duration';
+  /// ASR 模型 (豆包流式语音识别2.0)
+  static const String asrModel = 'doubao-asr-2.0';
 }
-*/

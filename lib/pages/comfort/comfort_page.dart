@@ -5,6 +5,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../app/themes/app_colors.dart';
 import '../../app/config/llm_config.dart';
+import '../../app/config/speech_config.dart';
 import '../../services/emotion_service.dart';
 import '../../services/llm_service.dart';
 import '../../services/ai_comfort_service.dart';
@@ -45,6 +46,7 @@ class _ComfortPageState extends State<ComfortPage> {
   final AudioPlayer _ttsPlayer = AudioPlayer();
   bool _isRecording = false;
   String? _playingMessageIndex;
+  String _ttsVoiceType = SpeechConfig.defaultVoiceType;
 
   // 对话管理
   List<Conversation> _conversations = [];
@@ -55,6 +57,12 @@ class _ComfortPageState extends State<ComfortPage> {
   void initState() {
     super.initState();
     _loadConversations();
+    _loadVoicePreference();
+  }
+
+  Future<void> _loadVoicePreference() async {
+    final voice = await _storageService.getTtsVoiceType();
+    if (mounted) setState(() => _ttsVoiceType = voice);
   }
 
   Future<void> _loadConversations() async {
@@ -360,45 +368,42 @@ class _ComfortPageState extends State<ComfortPage> {
   /// 切换录音状态
   Future<void> _toggleRecording() async {
     if (_isRecording) {
-      await _speechService.stopListening();
       setState(() => _isRecording = false);
-    } else {
-      if (!_speechService.sttAvailable) {
+      final text = await _speechService.stopRecordingAndRecognize();
+      if (text != null && text.isNotEmpty) {
+        _textController.text = text;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('当前设备不支持语音识别'),
+              content: Text('识别: $text'),
+              backgroundColor: AppColors.calmGreen,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('语音识别失败，请重试'),
               backgroundColor: AppColors.softOrange,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
-        return;
       }
-      final started = await _speechService.startListening((text) {
-        if (text.isNotEmpty) {
-          _textController.text = text;
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('识别: $text'),
-                backgroundColor: AppColors.calmGreen,
-                duration: const Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
-          }
-        }
-      });
+    } else {
+      final started = await _speechService.startRecording();
       if (started) {
         setState(() => _isRecording = true);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('无法启动语音识别'),
+              content: const Text('无法启动录音，请检查麦克风权限'),
               backgroundColor: AppColors.softPink,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -436,7 +441,7 @@ class _ComfortPageState extends State<ComfortPage> {
 
     setState(() => _playingMessageIndex = '$index');
 
-    final audioPath = await _speechService.textToSpeech(plainText);
+    final audioPath = await _speechService.textToSpeech(plainText, voiceType: _ttsVoiceType);
     if (audioPath != null && mounted) {
       await _ttsPlayer.play(DeviceFileSource(audioPath));
       _ttsPlayer.onPlayerComplete.listen((_) {
@@ -498,6 +503,8 @@ class _ComfortPageState extends State<ComfortPage> {
                 _streamDisplayTimer?.cancel();
                 _cursorBlinkTimer?.cancel();
                 _newConversation();
+              } else if (value == 'voice') {
+                _showVoicePicker();
               } else if (value == 'config') {
                 _showConfigInfo();
               }
@@ -520,6 +527,21 @@ class _ComfortPageState extends State<ComfortPage> {
                     Icon(_useStream ? Icons.stream : Icons.text_fields, size: 18),
                     const SizedBox(width: 8),
                     Text(_useStream ? '关闭流式（打字机）' : '开启流式（实时）'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'voice',
+                child: Row(
+                  children: [
+                    Icon(
+                      _ttsVoiceType == SpeechConfig.voiceTypeMale
+                          ? Icons.man_outlined
+                          : Icons.woman_outlined,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text('朗读音色: ${SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '未知'}'),
                   ],
                 ),
               ),
@@ -1043,6 +1065,43 @@ class _ComfortPageState extends State<ComfortPage> {
             child: const Text('关闭'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showVoicePicker() {
+    final voices = [
+      SpeechConfig.voiceTypeFemale,
+      SpeechConfig.voiceTypeFemale2,
+      SpeechConfig.voiceTypeMale,
+    ];
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('选择朗读音色'),
+        children: voices.map((v) {
+          final isSelected = v == _ttsVoiceType;
+          return RadioListTile<String>(
+            value: v,
+            groupValue: _ttsVoiceType,
+            title: Text(
+              SpeechConfig.voiceTypeLabels[v] ?? v,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? AppColors.hazeBlue : null,
+              ),
+            ),
+            activeColor: AppColors.hazeBlue,
+            onChanged: (value) async {
+              if (value != null && value != _ttsVoiceType) {
+                await _storageService.setTtsVoiceType(value);
+                setState(() => _ttsVoiceType = value);
+                if (mounted) Navigator.pop(ctx);
+              }
+            },
+          );
+        }).toList(),
       ),
     );
   }
