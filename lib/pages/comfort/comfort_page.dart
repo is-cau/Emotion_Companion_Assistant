@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -42,10 +41,9 @@ class _ComfortPageState extends State<ComfortPage> {
   bool _streamEnded = false;
   bool _cursorVisible = true;
 
-  // 语音服务 (系统 ASR + 豆包 TTS)
+  // 语音服务 (豆包 TTS)
   final SpeechService _speechService = SpeechService();
   final AudioPlayer _ttsPlayer = AudioPlayer();
-  bool _isRecording = false;
   String? _playingMessageIndex;
   String _ttsVoiceType = SpeechConfig.defaultVoiceType;
 
@@ -372,55 +370,6 @@ class _ComfortPageState extends State<ComfortPage> {
     });
   }
 
-  /// 切换录音状态
-  Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      setState(() => _isRecording = false);
-      final text = await _speechService.stopRecordingAndRecognize();
-      if (text != null && text.isNotEmpty) {
-        _textController.text = text;
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('识别: $text'),
-              backgroundColor: AppColors.calmGreen,
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('语音识别失败，请重试'),
-              backgroundColor: AppColors.softOrange,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }
-      }
-    } else {
-      final started = await _speechService.startRecording();
-      if (started) {
-        setState(() => _isRecording = true);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('无法启动录音，请检查麦克风权限'),
-              backgroundColor: AppColors.softPink,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }
-      }
-    }
-  }
-
   /// 朗读AI消息 (豆包TTS, 截取前300字)
   Future<void> _speakMessage(int index, String text) async {
     if (_playingMessageIndex == '$index') {
@@ -650,31 +599,6 @@ class _ComfortPageState extends State<ComfortPage> {
               top: false,
               child: Row(
                 children: [
-                  // 语音输入按钮
-                  GestureDetector(
-                    onTap: _toggleRecording,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _isRecording
-                            ? AppColors.softPink.withValues(alpha: 0.15)
-                            : AppColors.hazeBlue.withValues(alpha: 0.08),
-                        border: Border.all(
-                          color: _isRecording ? AppColors.softPink : AppColors.hazeBlue.withValues(alpha: 0.3),
-                          width: _isRecording ? 2 : 1,
-                        ),
-                      ),
-                      child: Icon(
-                        _isRecording ? Icons.mic : Icons.mic_outlined,
-                        color: _isRecording ? AppColors.softPink : AppColors.hazeBlue,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       constraints: const BoxConstraints(maxHeight: 100),
@@ -690,9 +614,7 @@ class _ComfortPageState extends State<ComfortPage> {
                               : AppColors.milkWhite,
                           hintText: _isLoading
                               ? 'AI正在思考……'
-                              : _isRecording
-                                  ? '正在聆听……'
-                                  : '说说你的心事……',
+                              : '说说你的心事……',
                           suffixIcon: IconButton(
                             icon: _isLoading
                                 ? SizedBox(
