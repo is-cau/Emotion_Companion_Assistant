@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'app/themes/app_theme.dart';
 import 'app/themes/app_colors.dart';
 import 'app/routes/app_routes.dart';
@@ -8,11 +9,20 @@ import 'pages/home/home_page.dart';
 import 'pages/treehole/treehole_page.dart';
 import 'pages/comfort/comfort_page.dart';
 import 'pages/privacy/privacy_page.dart';
+import 'services/hive_adapters.dart';
 import 'services/llm_service.dart';
+import 'services/speech_service.dart';
+import 'services/storage_service.dart';
 import 'widgets/app_splash.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  Hive.registerAdapter(EmotionRecordAdapter());
+  Hive.registerAdapter(ChatMessageAdapter());
+  Hive.registerAdapter(ConversationAdapter());
+  Hive.registerAdapter(DreamRecordAdapter());
+  await StorageService.init();
   Get.put(AppController());
   runApp(const EmotionCompanionApp());
 }
@@ -67,6 +77,7 @@ class _MainNavigationState extends State<MainNavigation> {
   void initState() {
     super.initState();
     LlmService().reloadConfig();
+    SpeechService().reloadTtsConfig();
     _pages = [
       HomePage(key: _homeKey, onNavigateToComfort: () => _onTabChanged(2)),
       TreeholePage(key: _treeholeKey),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -26,6 +27,8 @@ class TreeholePageState extends State<TreeholePage> {
   // 白噪音
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _currentNoise; // 'rain', 'wind', 'stream' 或 null
+  Timer? _fadeTimer;
+  double _currentVolume = 1.0;
 
   @override
   void initState() {
@@ -37,6 +40,7 @@ class TreeholePageState extends State<TreeholePage> {
 
   @override
   void dispose() {
+    _fadeTimer?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -385,10 +389,40 @@ class TreeholePageState extends State<TreeholePage> {
     );
   }
 
+  double _easeInOut(double t) => t * t * (3 - 2 * t);
+
+  void _fadeTo(AudioPlayer player, double target, Duration duration,
+      {VoidCallback? onDone}) {
+    _fadeTimer?.cancel();
+    final steps = (duration.inMilliseconds / 50).round();
+    final startVolume = _currentVolume;
+    final delta = target - startVolume;
+    int step = 0;
+    _fadeTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      step++;
+      if (step >= steps) {
+        _currentVolume = target;
+        player.setVolume(target);
+        timer.cancel();
+        _fadeTimer = null;
+        onDone?.call();
+      } else {
+        final progress = _easeInOut(step / steps);
+        _currentVolume = startVolume + delta * progress;
+        player.setVolume(_currentVolume);
+      }
+    });
+  }
+
   void _toggleNoise(String key) async {
+    _fadeTimer?.cancel();
+
     if (_currentNoise == key) {
-      await _audioPlayer.stop();
       setState(() => _currentNoise = null);
+      _fadeTo(_audioPlayer, 0.0, const Duration(seconds: 3), onDone: () {
+        _audioPlayer.stop();
+        _currentVolume = 1.0;
+      });
     } else {
       await _audioPlayer.stop();
       final assetMap = {
@@ -396,8 +430,11 @@ class TreeholePageState extends State<TreeholePage> {
         'wind': 'audio/night_wind.mp3',
         'stream': 'audio/stream.mp3',
       };
+      _currentVolume = 0.0;
+      _audioPlayer.setVolume(0.0);
       await _audioPlayer.play(AssetSource(assetMap[key]!));
       setState(() => _currentNoise = key);
+      _fadeTo(_audioPlayer, 1.0, const Duration(seconds: 3));
     }
   }
 

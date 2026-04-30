@@ -485,6 +485,22 @@ class LlmService {
     }
   }
 
+  /// 从持久化的消息列表恢复对话历史，限制最近N轮以控制token消耗
+  void loadHistory(List<Map<String, String>> messages) {
+    _history.clear();
+    if (messages.isEmpty) return;
+    // 只保留最近10轮对话（20条消息），减少token消耗
+    final limited = messages.length > 20 ? messages.sublist(messages.length - 20) : messages;
+    // 单条消息超过800字则截断，避免超长消息消耗过多token
+    for (final msg in limited) {
+      var content = msg['content'] ?? '';
+      if (content.length > 800) {
+        content = '${content.substring(0, 797)}...';
+      }
+      _history.add({'role': msg['role']!, 'content': content});
+    }
+  }
+
   /// 清空对话历史
   void clearHistory() {
     _history.clear();

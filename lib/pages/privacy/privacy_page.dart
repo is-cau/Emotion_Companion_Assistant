@@ -4,6 +4,7 @@ import '../../app/themes/app_colors.dart';
 import '../../app/app_controller.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/llm_config_dialog.dart';
+import '../../widgets/speech_config_dialog.dart';
 
 class PrivacyPage extends StatefulWidget {
   const PrivacyPage({super.key});
@@ -192,6 +193,21 @@ class PrivacyPageState extends State<PrivacyPage> {
             ),
             const SizedBox(height: 16),
 
+            // 语音合成配置
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Card(
+                child: _buildActionTile(
+                  icon: Icons.record_voice_over,
+                  title: '语音合成配置',
+                  subtitle: '自定义TTS API地址、Key和音色',
+                  color: AppColors.gentlePurple,
+                  onTap: () => showSpeechConfigDialog(context),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // 隐私政策说明
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -213,7 +229,7 @@ class PrivacyPageState extends State<PrivacyPage> {
                       _buildPolicyItem('无需实名认证、无需读取通讯录'),
                       _buildPolicyItem('无需读取相册、无需位置权限'),
                       _buildPolicyItem('所有倾诉内容本地加密存储'),
-                      _buildPolicyItem('自动定时清理冗余数据'),
+                      _buildPolicyItem('所有历史数据永久保留'),
                       _buildPolicyItem('无后台数据售卖、无第三方信息共享'),
                       _buildPolicyItem('符合个人隐私保护法律法规'),
                     ],

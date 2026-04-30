@@ -12,6 +12,7 @@ import '../../services/speech_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
 import '../../widgets/llm_config_dialog.dart';
+import '../../widgets/speech_config_dialog.dart';
 
 class ComfortPage extends StatefulWidget {
   const ComfortPage({super.key});
@@ -56,6 +57,7 @@ class _ComfortPageState extends State<ComfortPage> {
   @override
   void initState() {
     super.initState();
+    _speechService.reloadTtsConfig();
     _loadConversations();
     _loadVoicePreference();
   }
@@ -90,14 +92,19 @@ class _ComfortPageState extends State<ComfortPage> {
 
   void _restoreMessages() {
     _messages.clear();
+    final historyList = <Map<String, String>>[];
     for (final msg in _currentConversation!.messages) {
       _messages.add(_ChatBubble(
         content: msg.content,
         isUser: msg.isUser,
         emotion: msg.emotion,
       ));
+      historyList.add({
+        'role': msg.isUser ? 'user' : 'assistant',
+        'content': msg.content,
+      });
     }
-    // 对话为空时显示欢迎语
+    _llmService.loadHistory(historyList);
     if (_messages.isEmpty) {
       _addWelcomeMessage();
     }
@@ -434,11 +441,6 @@ class _ComfortPageState extends State<ComfortPage> {
 
     if (plainText.isEmpty) return;
 
-    // 截取前 300 字，避免太长导致生成慢
-    if (plainText.length > 300) {
-      plainText = plainText.substring(0, 300);
-    }
-
     setState(() => _playingMessageIndex = '$index');
 
     final audioPath = await _speechService.textToSpeech(plainText, voiceType: _ttsVoiceType);
@@ -507,6 +509,8 @@ class _ComfortPageState extends State<ComfortPage> {
                 _showVoicePicker();
               } else if (value == 'config') {
                 _showLlmConfigDialog();
+              } else if (value == 'tts_config') {
+                showSpeechConfigDialog(context).then((_) => _speechService.reloadTtsConfig());
               }
             },
             itemBuilder: (context) => [
@@ -562,6 +566,16 @@ class _ComfortPageState extends State<ComfortPage> {
                     Icon(Icons.settings_outlined, size: 18),
                     SizedBox(width: 8),
                     Text('大模型配置'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'tts_config',
+                child: Row(
+                  children: [
+                    Icon(Icons.record_voice_over, size: 18),
+                    SizedBox(width: 8),
+                    Text('语音合成配置'),
                   ],
                 ),
               ),

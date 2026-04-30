@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
@@ -27,11 +28,14 @@ class _DreamPageState extends State<DreamPage> {
   String? _errorMessage;
   String _dreamText = '';
   List<DreamRecord> _history = [];
+  Timer? _pendingCheckTimer;
+  String? _pendingDreamId;
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+    _checkAndRestorePendingDream();
   }
 
   Future<void> _loadHistory() async {
@@ -39,8 +43,54 @@ class _DreamPageState extends State<DreamPage> {
     setState(() => _history = records);
   }
 
+  Future<void> _checkAndRestorePendingDream() async {
+    final pendingText = await _storageService.getPendingDreamText();
+    final pendingId = await _storageService.getPendingDreamId();
+    if (pendingText == null || pendingId == null) return;
+
+    _pendingDreamId = pendingId;
+    setState(() {
+      _isLoading = true;
+      _dreamText = pendingText;
+      _resultMarkdown = null;
+      _resultTitle = null;
+      _errorMessage = null;
+    });
+    _startPendingPolling();
+  }
+
+  void _startPendingPolling() {
+    _pendingCheckTimer?.cancel();
+    _pendingCheckTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      final pendingText = await _storageService.getPendingDreamText();
+      if (pendingText == null && mounted) {
+        _pendingCheckTimer?.cancel();
+        _pendingDreamId = null;
+        await _loadHistory();
+        // 检查是否刚完成的记录在历史中
+        final records = _history;
+        if (records.isNotEmpty) {
+          final latest = records.first;
+          setState(() {
+            _isLoading = false;
+            _resultMarkdown = latest.analysis;
+            _resultTitle = latest.title;
+            _dreamText = latest.dreamText;
+          });
+          _scrollToResult();
+        } else {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = '梦境分析暂时遇到问题，请检查网络或API配置后重试';
+          });
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _pendingCheckTimer?.cancel();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -49,6 +99,12 @@ class _DreamPageState extends State<DreamPage> {
   Future<void> _submitDream() async {
     final text = _textController.text.trim();
     if (text.isEmpty || _isLoading) return;
+
+    final recordId = md5.convert(utf8.encode('$text${DateTime.now().millisecondsSinceEpoch}')).toString();
+    _pendingDreamId = recordId;
+
+    // 持久化进行中状态，确保退出页面再进入时能恢复
+    await _storageService.setPendingDream(recordId, text);
 
     setState(() {
       _isLoading = true;
@@ -61,33 +117,44 @@ class _DreamPageState extends State<DreamPage> {
 
     final result = await _llmService.analyzeDream(text);
 
-    if (result != null && mounted) {
+    if (result != null) {
       final title = result['title'] ?? '梦境解读';
       final analysis = result['analysis'] ?? '';
-      if (analysis.isEmpty) {
+      if (analysis.isNotEmpty) {
+        final record = DreamRecord(
+          id: recordId,
+          dreamText: text,
+          analysis: analysis,
+          title: title,
+          createdAt: DateTime.now(),
+        );
+        await _storageService.saveDreamRecord(record);
+      }
+    }
+
+    // 无论成功失败都清除进行中标记
+    await _storageService.clearPendingDream();
+    _pendingDreamId = null;
+    _pendingCheckTimer?.cancel();
+
+    if (!mounted) return;
+
+    await _loadHistory();
+
+    if (result != null) {
+      final analysis = result['analysis'] ?? '';
+      if (analysis.isNotEmpty) {
+        setState(() {
+          _isLoading = false;
+          _resultMarkdown = analysis;
+          _resultTitle = result['title'] ?? '梦境解读';
+        });
+      } else {
         setState(() {
           _isLoading = false;
           _errorMessage = '梦境分析暂时遇到问题，请检查网络或API配置后重试';
         });
-        return;
       }
-
-      // 保存到历史
-      final record = DreamRecord(
-        id: md5.convert(utf8.encode('$text${DateTime.now().millisecondsSinceEpoch}')).toString(),
-        dreamText: text,
-        analysis: analysis,
-        title: title,
-        createdAt: DateTime.now(),
-      );
-      await _storageService.saveDreamRecord(record);
-      await _loadHistory();
-
-      setState(() {
-        _isLoading = false;
-        _resultMarkdown = analysis;
-        _resultTitle = title;
-      });
     } else {
       setState(() {
         _isLoading = false;
@@ -215,7 +282,8 @@ class _DreamPageState extends State<DreamPage> {
       pinned: true,
       title: const Text('AI梦境解读'),
       centerTitle: false,
-      backgroundColor: AppColors.dreamyLavender.withOpacity(0.06),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
     );
   }
