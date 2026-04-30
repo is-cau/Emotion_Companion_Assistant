@@ -2,7 +2,7 @@
 
 一款轻量化治愈系心理健康情绪陪伴 Flutter 应用。
 
-**核心功能：** 情绪分析 · 匿名树洞倾诉 · AI 暖心安慰 · AI 梦境解读 · 语音对话
+**核心功能：** 情绪分析 · 匿名树洞倾诉 · AI 暖心安慰 · AI 梦境解读 · 语音朗读
 
 ## 功能特性
 
@@ -34,7 +34,6 @@
 - 大模型不可用时自动降级到本地预设话术
 - 流式失败自动降级到普通模式
 - Markdown 格式化渲染（加粗、标题、引用、分隔线、列表、代码块）
-- 语音输入（系统 ASR，中文识别）
 - AI 回复语音朗读（豆包 TTS，火山方舟语音合成 2.0，长文本自动分段朗读）
 - 深呼吸引导 + 晚安语录快捷入口
 - 右上角菜单支持切换大模型模式、音色、新建对话、配置语音合成
@@ -78,7 +77,7 @@
 | 图表 | CustomPaint 情绪雷达图 |
 | Markdown | flutter_markdown ^0.7.4（对话 + 梦境解读） |
 | 音频 | audioplayers ^6.1.0（白噪音 + TTS 播放） |
-| 语音识别 | speech_to_text ^7.3.0（系统 ASR） |
+
 | 字体 | google_fonts ^6.2.1 |
 | SVG | flutter_svg ^2.0.10 |
 | 工具 | intl ^0.19.0 · crypto ^3.0.6 |
@@ -116,7 +115,7 @@ lib/
 │   ├── llm_service.dart                # 大模型 API（对话/流式/情绪分析/梦境解读/标题生成）
 │   ├── emotion_service.dart            # 本地情感分析（关键词权重算法）
 │   ├── ai_comfort_service.dart         # 本地预设安慰话术（降级备选）
-│   ├── speech_service.dart             # 语音服务（系统 ASR + 豆包 TTS）
+│   ├── speech_service.dart             # 语音服务（豆包 TTS）
 │   ├── storage_service.dart            # 本地存储（记录/对话/梦境/密码/密保/主题/LLM配置）
 │   └── icon_service.dart               # Android 动态图标切换
 └── models/
@@ -148,7 +147,6 @@ static const String accessToken = 'your-access-token';
 static const String secretKey = 'your-secret-key';
 ```
 
-- **语音输入**：使用系统内置 ASR（`speech_to_text` 插件），无需额外配置
 - **语音合成**：使用豆包语音合成 2.0（火山方舟 TTS），支持多种音色
 
 ### 3. 准备资源文件

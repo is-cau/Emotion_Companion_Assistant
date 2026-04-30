@@ -1,26 +1,27 @@
 /// 火山引擎语音服务配置
 /// 请在此处填写你购买的语音API信息
 /// 火山方舟 - 豆包语音配置
+/// 火山方舟 - 豆包语音配置
 class SpeechConfig {
   /// 火山方舟 API Key (Ark 平台鉴权)
   /// 控制台 → 火山方舟 → API Key 管理 → 格式: api-key-xxxxx
-  static const String arkApiKey = 'api-key-xxxxx';
+  static const String arkApiKey = 'xxxxxx';
 
   /// 豆包语音 App ID
-  static const String appId = 'xxxxxxxxxxx';
+  static const String appId = 'xxxxxx';
 
   /// 豆包语音 Access Token (AK)
-  static const String accessToken = 'xxxxxxxxxxxxxxxxxxxxxx';
+  static const String accessToken = 'xxxxxx';
 
   /// 豆包语音 Secret Key (SK) - 用于签名鉴权
-  static const String secretKey = 'xxxxxxxxxxxxxxxxxxxxxx';
+  static const String secretKey = 'xxxxxx';
 
   /// TTS 模型 (豆包语音合成2.0)
   static const String ttsModel = 'doubao-tts-2.0';
 
-  /// TTS 音色常量
-  static const String voiceTypeFemale = 'zh_female_vv_uranus_bigtts';   // vivi 2.0 (清新女声)
-  static const String voiceTypeMale = 'zh_male_m191_uranus_bigtts';     // 云舟 (沉稳男声)
+  /// TTS 音色常量 (豆包语音合成2.0)
+  static const String voiceTypeFemale = 'zh_female_vv_uranus_bigtts'; // vivi 2.0 (清新女声)
+  static const String voiceTypeMale = 'zh_male_m191_uranus_bigtts';   // 云舟 (沉稳男声)
 
   /// 音色显示名映射
   static const Map<String, String> voiceTypeLabels = {
@@ -32,8 +33,11 @@ class SpeechConfig {
   static const String defaultVoiceType = voiceTypeFemale;
 
   /// TTS 语速 (0.5-2.0)
-  static const double ttsSpeed = 0.8;
+  static const double ttsSpeed = 1.2;
 
-  /// ASR 模型 (豆包流式语音识别2.0)
-  static const String asrModel = 'doubao-asr-2.0';
+  /// TTS 音量 (0.1-3.0，1.0 为原音量)
+  static const double defaultVolume = 1.0;
+
+  /// TTS 单次请求最大文本字节数 (火山方舟 API 限制约 1024 字节)
+  static const int ttsMaxTextBytes = 1000;
 }
