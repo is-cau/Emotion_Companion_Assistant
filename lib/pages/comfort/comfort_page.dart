@@ -808,6 +808,7 @@ class _ComfortPageState extends State<ComfortPage> {
   }
 
   Widget _buildUserMessage(_ChatBubble msg) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 16, left: 40),
       child: Row(
@@ -818,22 +819,26 @@ class _ComfortPageState extends State<ComfortPage> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.hazeBlue.withValues(alpha: 0.18),
-                    AppColors.hazeBlue.withValues(alpha: 0.08),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: isDark
+                    ? AppColors.hazeBlue.withValues(alpha: 0.25)
+                    : AppColors.hazeBlue.withValues(alpha: 0.13),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
                   bottomLeft: Radius.circular(18),
                   bottomRight: Radius.circular(4),
                 ),
+                border: Border.all(
+                  color: AppColors.hazeBlue.withValues(alpha: 0.15),
+                  width: 0.5,
+                ),
               ),
-              child: Text(msg.content, style: Theme.of(context).textTheme.bodyMedium),
+              child: Text(
+                msg.content,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+              ),
             ),
           ),
         ],
@@ -872,8 +877,8 @@ class _ComfortPageState extends State<ComfortPage> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: msg.isError
-                    ? AppColors.softPink.withValues(alpha: 0.08)
-                    : Theme.of(context).colorScheme.surface,
+                    ? AppColors.softPink.withValues(alpha: 0.1)
+                    : Theme.of(context).cardColor,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
@@ -883,15 +888,15 @@ class _ComfortPageState extends State<ComfortPage> {
                 border: Border(
                   left: BorderSide(
                     color: msg.isError
-                        ? AppColors.softPink.withValues(alpha: 0.5)
-                        : AppColors.softPink.withValues(alpha: 0.25),
+                        ? AppColors.softPink.withValues(alpha: 0.7)
+                        : AppColors.softPink.withValues(alpha: 0.45),
                     width: 3,
                   ),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 14,
                     offset: const Offset(0, 3),
                   ),
                 ],
