@@ -748,41 +748,46 @@ class HomePageState extends State<HomePage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color.withValues(alpha: 0.12),
-              color.withValues(alpha: 0.04),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: color.withValues(alpha: 0.12),
-            width: 1,
-          ),
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            // 底层：彩色柔光投影，营造"浮起"感
+            BoxShadow(
+              color: color.withValues(alpha: 0.18),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+            // 中层：中性灰投影，增加厚度
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           children: [
+            // 图标容器 — 彩色半透明底
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 10),
+            // 标签 — 用主文字色，确保可读性
             Text(
               label,
-              style: TextStyle(
-                color: color,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    letterSpacing: 0.3,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
