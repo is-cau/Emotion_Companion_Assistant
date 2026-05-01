@@ -404,12 +404,20 @@ class HomePageState extends State<HomePage> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.hazeBlue.withValues(alpha: 0.03),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.hazeBlue.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.hazeBlue.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,8 +436,8 @@ class HomePageState extends State<HomePage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.hazeBlue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.hazeBlue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '查看详情 →',
@@ -452,7 +460,7 @@ class HomePageState extends State<HomePage> {
               subtitle: '开始倾诉，让情绪被温柔看见',
             ),
           ] else ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 _buildIconContainer(
@@ -462,35 +470,22 @@ class HomePageState extends State<HomePage> {
                 const SizedBox(width: 12),
                 _buildEmotionChip(todayAggregated.dominantEmotion),
                 const SizedBox(width: 12),
-                Text(
-                  '今日 $todayCount 条 · 共 ${_records.length} 条',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                Expanded(
+                  child: Text(
+                    '今日 $todayCount 条 · 共 ${_records.length} 条',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.hazeBlue.withValues(alpha: 0.04),
-                    AppColors.hazeBlue.withValues(alpha: 0.01),
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: SizedBox(
-                height: 140,
-                child: EmotionRadarChart(
-                  record: todayAggregated,
-                  textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary,
-                ),
+            SizedBox(
+              height: 140,
+              child: EmotionRadarChart(
+                record: todayAggregated,
+                textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary,
               ),
             ),
           ],
@@ -519,12 +514,20 @@ class HomePageState extends State<HomePage> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.hazeBlue.withValues(alpha: 0.03),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.hazeBlue.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.hazeBlue.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,7 +629,7 @@ class HomePageState extends State<HomePage> {
       ),
       child: Column(
         children: [
-          Icon(icon, size: 36, color: iconColor.withValues(alpha: 0.3)),
+          Icon(icon, size: 36, color: iconColor.withValues(alpha: 0.45)),
           const SizedBox(height: 12),
           Text(
             title,
