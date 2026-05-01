@@ -124,187 +124,523 @@ class HomePageState extends State<HomePage> {
     ).length;
   }
 
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final months = [
+      '1月', '2月', '3月', '4月', '5月', '6月',
+      '7月', '8月', '9月', '10月', '11月', '12月',
+    ];
+    final weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    return '${months[dt.month - 1]}${dt.day}日 ${weekdays[dt.weekday - 1]}';
+  }
+
+  // ============= UI Builders =============
+
+  Widget _buildSectionHeader(String title, Color accentColor, {Widget? trailing}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 18,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          if (trailing != null) ...[
+            const Spacer(),
+            trailing,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconContainer(IconData icon, Color color, {double size = 18, double containerSize = 38}) {
+    return Container(
+      width: containerSize,
+      height: containerSize,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, size: size, color: color),
+    );
+  }
+
+  // ============= Main Build =============
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final todayAggregated = _getTodayAggregated();
     final todayCount = _getTodayCount();
+    final now = DateTime.now();
+
+    final gradientColors = isDark
+        ? [AppColors.hazeBlue.withValues(alpha: 0.12), AppColors.darkBackground]
+        : [AppColors.hazeBlue.withValues(alpha: 0.05), AppColors.background];
+
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            children: [
-              // 顶部问候
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      _greeting,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+          ),
+        ),
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              // ===== SliverAppBar =====
+              SliverAppBar(
+                pinned: true,
+                title: Text(
+                  '情绪陪伴',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AppColors.hazeBlue,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '我是你的情绪陪伴师',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
                 ),
+                centerTitle: false,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
               ),
-              const SizedBox(height: 32),
 
-              // 一键倾诉按钮（呼吸粒子效果）
-              HeartbeatBreathButton(
-                onTap: () => Get.toNamed(AppRoutes.treehole),
-              ),
-              const SizedBox(height: 40),
+              // ===== All Content =====
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
 
-              // 今日情绪状态卡片
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '今日情绪状态',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                if (todayAggregated != null) {
-                                  Get.toNamed(AppRoutes.analysis, arguments: {'record': todayAggregated});
-                                } else {
-                                  Get.toNamed(AppRoutes.analysis);
-                                }
-                              },
-                              child: Text(
-                                '查看详情 →',
-                                style: TextStyle(
-                                  color: AppColors.hazeBlue,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            _buildEmotionChip(todayAggregated?.dominantEmotion ?? '未知'),
-                            const SizedBox(width: 12),
-                            Text(
-                              todayAggregated != null
-                                  ? '今日 $todayCount 条 · 共 ${_records.length} 条'
-                                  : '共 ${_records.length} 条情绪记录',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                        if (todayAggregated != null) ...[
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            height: 120,
-                            child: EmotionRadarChart(
-                              record: todayAggregated!,
-                              textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                      // ===== Greeting Header =====
+                      _buildGreetingHeader(now),
+
+                      const SizedBox(height: 28),
+
+                      // ===== Heartbeat Breath Button =====
+                      _buildHeartbeatSection(),
+
+                      const SizedBox(height: 32),
+
+                      // ===== Today's Emotion Card =====
+                      _buildTodayEmotionCard(todayAggregated, todayCount),
+
+                      const SizedBox(height: 16),
+
+                      // ===== Emotion Timeline Card =====
+                      _buildTimelineCard(),
+
+                      const SizedBox(height: 16),
+
+                      // ===== Quick Actions =====
+                      _buildQuickActionsSection(),
+
+                      const SizedBox(height: 32),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 情绪波动卡片
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('近期情绪波动', style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 16),
-                        _buildEmotionTimeline(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 快捷功能
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickAction(
-                            icon: Icons.auto_awesome,
-                            label: 'AI暖心安慰',
-                            color: AppColors.softPink,
-                            onTap: () {
-                              if (widget.onNavigateToComfort != null) {
-                                widget.onNavigateToComfort!();
-                              } else {
-                                Get.toNamed(AppRoutes.comfort);
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAction(
-                            icon: Icons.analytics_outlined,
-                            label: '情绪分析',
-                            color: AppColors.lightCyan,
-                            onTap: () => Get.toNamed(AppRoutes.analysis),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickAction(
-                            icon: Icons.shield_outlined,
-                            label: '隐私中心',
-                            color: AppColors.gentlePurple,
-                            onTap: () => Get.toNamed(AppRoutes.privacy),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAction(
-                            icon: Icons.nightlight_round,
-                            label: 'AI梦境解读',
-                            color: AppColors.dreamyLavender,
-                            onTap: () => Get.toNamed(AppRoutes.dream),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ============= Greeting Header =============
+
+  Widget _buildGreetingHeader(DateTime now) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.hazeBlue.withValues(alpha: 0.08),
+            AppColors.hazeBlue.withValues(alpha: 0.02),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.hazeBlue.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _greeting,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: AppColors.hazeBlue,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '我是你的情绪陪伴师',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.hazeBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.cloud_outlined,
+                  size: 22,
+                  color: AppColors.hazeBlue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.hazeBlue.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 12,
+                  color: AppColors.hazeBlue.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _formatDate(now),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.hazeBlue.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============= Heartbeat Section =============
+
+  Widget _buildHeartbeatSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.hazeBlue.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.hazeBlue.withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '轻轻点击，开始倾诉...',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textHint,
+                  fontStyle: FontStyle.italic,
+                ),
+          ),
+          const SizedBox(height: 16),
+          HeartbeatBreathButton(
+            onTap: () => Get.toNamed(AppRoutes.treehole),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '你的每一次倾诉，都会被温柔聆听',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textHint,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============= Today's Emotion Card =============
+
+  Widget _buildTodayEmotionCard(EmotionRecord? todayAggregated, int todayCount) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.hazeBlue.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.hazeBlue.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            '今日情绪状态',
+            AppColors.hazeBlue,
+            trailing: GestureDetector(
+              onTap: () {
+                if (todayAggregated != null) {
+                  Get.toNamed(AppRoutes.analysis, arguments: {'record': todayAggregated});
+                } else {
+                  Get.toNamed(AppRoutes.analysis);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.hazeBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '查看详情 →',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.hazeBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          if (todayAggregated == null) ...[
+            const SizedBox(height: 8),
+            _buildEmptyState(
+              icon: Icons.sentiment_neutral_outlined,
+              iconColor: AppColors.hazeBlue,
+              title: '还没有情绪记录',
+              subtitle: '开始倾诉，让情绪被温柔看见',
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildIconContainer(
+                  Icons.auto_awesome,
+                  _emotionColor(todayAggregated.dominantEmotion),
+                ),
+                const SizedBox(width: 12),
+                _buildEmotionChip(todayAggregated.dominantEmotion),
+                const SizedBox(width: 12),
+                Text(
+                  '今日 $todayCount 条 · 共 ${_records.length} 条',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.hazeBlue.withValues(alpha: 0.04),
+                    AppColors.hazeBlue.withValues(alpha: 0.01),
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: SizedBox(
+                height: 140,
+                child: EmotionRadarChart(
+                  record: todayAggregated,
+                  textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Color _emotionColor(String emotion) {
+    const colors = {
+      '悲伤': AppColors.softPink,
+      '焦虑': AppColors.softOrange,
+      '愤怒': AppColors.angerRed,
+      '孤独': AppColors.gentlePurple,
+      '开心': AppColors.calmGreen,
+      '平静': AppColors.lightCyan,
+      '压抑': AppColors.warmBeige,
+    };
+    return colors[emotion] ?? AppColors.hazeBlue;
+  }
+
+  // ============= Emotion Timeline Card =============
+
+  Widget _buildTimelineCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.hazeBlue.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.hazeBlue.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('近期情绪波动', AppColors.hazeBlue),
+          const SizedBox(height: 8),
+          if (_records.isEmpty)
+            _buildEmptyState(
+              icon: Icons.show_chart_rounded,
+              iconColor: AppColors.hazeBlue,
+              title: '还没有情绪记录',
+              subtitle: '开始倾诉，记录你的情绪旅程',
+            )
+          else
+            _buildEmotionTimeline(),
+        ],
+      ),
+    );
+  }
+
+  // ============= Quick Actions =============
+
+  Widget _buildQuickActionsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: _buildSectionHeader('功能', AppColors.hazeBlue),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickAction(
+                icon: Icons.auto_awesome,
+                label: 'AI暖心安慰',
+                color: AppColors.softPink,
+                onTap: () {
+                  if (widget.onNavigateToComfort != null) {
+                    widget.onNavigateToComfort!();
+                  } else {
+                    Get.toNamed(AppRoutes.comfort);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickAction(
+                icon: Icons.analytics_outlined,
+                label: '情绪分析',
+                color: AppColors.lightCyan,
+                onTap: () => Get.toNamed(AppRoutes.analysis),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickAction(
+                icon: Icons.shield_outlined,
+                label: '隐私中心',
+                color: AppColors.gentlePurple,
+                onTap: () => Get.toNamed(AppRoutes.privacy),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickAction(
+                icon: Icons.nightlight_round,
+                label: 'AI梦境解读',
+                color: AppColors.dreamyLavender,
+                onTap: () => Get.toNamed(AppRoutes.dream),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ============= Reusable Widget Builders =============
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 36, color: iconColor.withValues(alpha: 0.3)),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: AppColors.textHint,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -320,16 +656,17 @@ class HomePageState extends State<HomePage> {
       '压抑': AppColors.warmBeige,
       '未知': AppColors.textHint,
     };
+    final color = colors[emotion] ?? AppColors.hazeBlue;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: (colors[emotion] ?? AppColors.hazeBlue).withOpacity(0.2),
+        color: color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         emotion,
         style: TextStyle(
-          color: colors[emotion] ?? AppColors.hazeBlue,
+          color: color,
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
@@ -338,68 +675,62 @@ class HomePageState extends State<HomePage> {
   }
 
   Widget _buildEmotionTimeline() {
-    if (_records.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            '还没有情绪记录，开始倾诉吧',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-      );
-    }
     final recent = _records.take(7).toList().reversed.toList();
     return SizedBox(
-      height: 96,
+      height: 110,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: recent.map((r) {
-          final colors = {
-            '悲伤': AppColors.softPink,
-            '焦虑': AppColors.softOrange,
-            '愤怒': AppColors.angerRed,
-            '孤独': AppColors.gentlePurple,
-            '开心': AppColors.calmGreen,
-            '平静': AppColors.lightCyan,
-            '压抑': AppColors.warmBeige,
-          };
-          // 正向指数：0~1，越高越积极
+          final emotionColor = _emotionColor(r.dominantEmotion);
           final positive = (r.happiness + r.calmness) / 2;
-          final barHeight = 16 + (positive * 36); // 16~52，安全范围
+          final barHeight = 20 + (positive * 42);
+
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 主导情绪小标签
+              // Dominant emotion label
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (colors[r.dominantEmotion] ?? AppColors.hazeBlue).withValues(alpha: 0.15),
+                  color: emotionColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   r.dominantEmotion,
                   style: TextStyle(
                     fontSize: 9,
-                    color: colors[r.dominantEmotion] ?? AppColors.hazeBlue,
+                    color: emotionColor,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
+              // Bar with gradient
               Container(
-                width: 10,
+                width: 14,
                 height: barHeight,
                 decoration: BoxDecoration(
-                  color: (colors[r.dominantEmotion] ?? AppColors.hazeBlue).withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(5),
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      emotionColor.withValues(alpha: 0.7),
+                      emotionColor.withValues(alpha: 0.25),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(7),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
+              // Date label
               Text(
                 _formatTimelineDate(r.createdAt),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
               ),
             ],
           );
@@ -417,20 +748,39 @@ class HomePageState extends State<HomePage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withValues(alpha: 0.12),
+              color.withValues(alpha: 0.04),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: color.withValues(alpha: 0.12),
+            width: 1,
+          ),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 10),
             Text(
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,

@@ -414,315 +414,386 @@ class _ComfortPageState extends State<ComfortPage> {
     }
   }
 
+  // ============================================================
+  // UI 构建
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDark
+        ? [AppColors.softPink.withValues(alpha: 0.06), AppColors.darkBackground]
+        : [AppColors.softPink.withValues(alpha: 0.04), AppColors.background];
+
+    final hasUserMessages = _messages.any((m) => m.isUser);
+
     return Scaffold(
       key: _scaffoldKey,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu, size: 22),
+      appBar: _buildAppBar(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+          ),
+        ),
+        child: Column(
+          children: [
+            _buildEmotionStatusBar(),
+            Expanded(
+              child: !hasUserMessages
+                  ? _buildWelcomeCard()
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final showDivider = index > 0 &&
+                            _messages[index].isUser != _messages[index - 1].isUser;
+                        return Column(
+                          children: [
+                            if (showDivider) _buildMessageGroupDivider(),
+                            _buildMessage(_messages[index], index),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+            _buildInputArea(),
+          ],
+        ),
+      ),
+      endDrawer: _buildEndDrawer(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    final hasEmotion = _currentEmotion != '平静';
+    final themeColor = hasEmotion ? AppColors.softPink : AppColors.hazeBlue;
+
+    return AppBar(
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: themeColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: IconButton(
+          icon: Icon(Icons.menu, size: 20, color: themeColor),
           onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
           tooltip: '对话记录',
         ),
-        title: Text(_currentConversation?.title ?? 'AI暖心安慰'),
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: '显示菜单',
-            icon: Icon(_useLlm ? Icons.cloud_outlined : Icons.cloud_off_outlined, size: 22),
-            onSelected: (value) {
-              if (value == 'toggle_llm') {
-                setState(() => _useLlm = !_useLlm);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(_useLlm ? '已切换到大模型模式' : '已切换到本地预设模式'),
-                    backgroundColor: AppColors.hazeBlue,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                );
-              } else if (value == 'toggle_stream') {
-                setState(() => _useStream = !_useStream);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(_useStream ? '已开启流式输出（API实时推送）' : '已关闭流式（打字机效果）'),
-                    backgroundColor: AppColors.hazeBlue,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                );
-              } else if (value == 'clear') {
-                _typeTimer?.cancel();
-                _streamDisplayTimer?.cancel();
-                _cursorBlinkTimer?.cancel();
-                _newConversation();
-              } else if (value == 'voice') {
-                _showVoicePicker();
-              } else if (value == 'config') {
-                _showLlmConfigDialog();
-              } else if (value == 'speech_params') {
-                showSpeechParamsDialog(context).then((_) => _speechService.reloadTtsConfig());
-              } else if (value == 'tts_config') {
-                showSpeechConfigDialog(context).then((_) => _speechService.reloadTtsConfig());
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'toggle_llm',
-                child: Row(
-                  children: [
-                    Icon(_useLlm ? Icons.cloud_off_outlined : Icons.cloud_outlined, size: 18),
-                    const SizedBox(width: 8),
-                    Text(_useLlm ? '切换到本地模式' : '切换到大模型模式'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'toggle_stream',
-                child: Row(
-                  children: [
-                    Icon(_useStream ? Icons.stream : Icons.text_fields, size: 18),
-                    const SizedBox(width: 8),
-                    Text(_useStream ? '关闭流式（打字机）' : '开启流式（实时）'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'voice',
-                child: Row(
-                  children: [
-                    Icon(
-                      _ttsVoiceType == SpeechConfig.voiceTypeMale
-                          ? Icons.man_outlined
-                          : Icons.woman_outlined,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text('朗读音色: ${SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '未知'}'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'clear',
-                child: Row(
-                  children: [
-                    Icon(Icons.add_comment_outlined, size: 18),
-                    SizedBox(width: 8),
-                    Text('新建对话'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'config',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings_outlined, size: 18),
-                    SizedBox(width: 8),
-                    Text('大模型配置'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'speech_params',
-                child: Row(
-                  children: [
-                    Icon(Icons.tune, size: 18),
-                    SizedBox(width: 8),
-                    Text('语音参数'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'tts_config',
-                child: Row(
-                  children: [
-                    Icon(Icons.record_voice_over, size: 18),
-                    SizedBox(width: 8),
-                    Text('语音合成配置'),
-                  ],
-                ),
-              ),
-            ],
+      ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _currentConversation?.title ?? 'AI暖心安慰',
+            style: Theme.of(context).textTheme.titleSmall,
           ),
-          IconButton(
-            icon: const Icon(Icons.self_improvement, size: 22),
-            onPressed: _showBreathGuide,
-            tooltip: '深呼吸引导',
-          ),
-          IconButton(
-            icon: const Icon(Icons.nightlight_outlined, size: 22),
-            onPressed: _showGoodnight,
-            tooltip: '晚安语录',
+          Text(
+            _useLlm ? '大模型${_useStream ? " · 实时流式" : " · 打字机"}' : '本地模式 · 打字机',
+            style: TextStyle(
+              fontSize: 11,
+              color: themeColor.withValues(alpha: 0.55),
+            ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // 状态标签
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      actions: [
+        PopupMenuButton<String>(
+          tooltip: '显示菜单',
+          offset: const Offset(0, 44),
+          icon: Container(
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: (_currentEmotion != '平静' ? AppColors.softPink : AppColors.hazeBlue).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
+              color: themeColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  _currentEmotion != '平静' ? Icons.favorite_outline : Icons.cloud_outlined,
-                  size: 14,
-                  color: _currentEmotion != '平静' ? AppColors.softPink : AppColors.hazeBlue,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _currentEmotion != '平静'
-                      ? '我感受到你现在有些$_currentEmotion'
-                      : (_useLlm
-                          ? '大模型模式${_useStream ? "·实时流式" : "·打字机"} · 随时倾诉'
-                          : '本地模式·打字机 · 随时倾诉'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _currentEmotion != '平静' ? AppColors.softPink : AppColors.hazeBlue,
-                  ),
-                ),
-              ],
+            child: Icon(
+              _useLlm ? Icons.cloud_outlined : Icons.cloud_off_outlined,
+              size: 18,
+              color: themeColor,
             ),
           ),
-
-          // 对话列表
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildMessage(msg, index);
-              },
-            ),
-          ),
-
-          // 输入区域
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 0.5)),
-            ),
-            child: SafeArea(
-              top: false,
+          onSelected: _onPopupMenuSelected,
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'toggle_llm',
               child: Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      constraints: const BoxConstraints(maxHeight: 100),
-                      child: TextField(
-                        controller: _textController,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        enabled: !_isLoading,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Theme.of(context).brightness == Brightness.dark
-                              ? AppColors.darkBackground
-                              : AppColors.milkWhite,
-                          hintText: _isLoading
-                              ? 'AI正在思考……'
-                              : '说说你的心事……',
-                          suffixIcon: IconButton(
-                            icon: _isLoading
-                                ? SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.hazeBlue,
-                                    ),
-                                  )
-                                : Icon(Icons.send_rounded, color: AppColors.hazeBlue, size: 20),
-                            onPressed: _isLoading ? null : _sendMessage,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  Icon(_useLlm ? Icons.cloud_off_outlined : Icons.cloud_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(_useLlm ? '切换到本地模式' : '切换到大模型模式'),
                 ],
               ),
             ),
+            PopupMenuItem(
+              value: 'toggle_stream',
+              child: Row(
+                children: [
+                  Icon(_useStream ? Icons.stream : Icons.text_fields, size: 18),
+                  const SizedBox(width: 8),
+                  Text(_useStream ? '关闭流式（打字机）' : '开启流式（实时）'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'voice',
+              child: Row(
+                children: [
+                  Icon(
+                    _ttsVoiceType == SpeechConfig.voiceTypeMale
+                        ? Icons.man_outlined
+                        : Icons.woman_outlined,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text('朗读音色: ${SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '未知'}'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'clear',
+              child: Row(
+                children: [
+                  Icon(Icons.add_comment_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('新建对话'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'config',
+              child: Row(
+                children: [
+                  Icon(Icons.settings_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('大模型配置'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'speech_params',
+              child: Row(
+                children: [
+                  Icon(Icons.tune, size: 18),
+                  SizedBox(width: 8),
+                  Text('语音参数'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'tts_config',
+              child: Row(
+                children: [
+                  Icon(Icons.record_voice_over, size: 18),
+                  SizedBox(width: 8),
+                  Text('语音合成配置'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        _buildThemedActionButton(Icons.self_improvement, '深呼吸引导', _showBreathGuide),
+        _buildThemedActionButton(Icons.nightlight_outlined, '晚安语录', _showGoodnight),
+      ],
+    );
+  }
+
+  void _onPopupMenuSelected(String value) {
+    if (value == 'toggle_llm') {
+      setState(() => _useLlm = !_useLlm);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_useLlm ? '已切换到大模型模式' : '已切换到本地预设模式'),
+          backgroundColor: AppColors.hazeBlue,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } else if (value == 'toggle_stream') {
+      setState(() => _useStream = !_useStream);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_useStream ? '已开启流式输出（API实时推送）' : '已关闭流式（打字机效果）'),
+          backgroundColor: AppColors.hazeBlue,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } else if (value == 'clear') {
+      _typeTimer?.cancel();
+      _streamDisplayTimer?.cancel();
+      _cursorBlinkTimer?.cancel();
+      _newConversation();
+    } else if (value == 'voice') {
+      _showVoicePicker();
+    } else if (value == 'config') {
+      _showLlmConfigDialog();
+    } else if (value == 'speech_params') {
+      showSpeechParamsDialog(context).then((_) => _speechService.reloadTtsConfig());
+    } else if (value == 'tts_config') {
+      showSpeechConfigDialog(context).then((_) => _speechService.reloadTtsConfig());
+    }
+  }
+
+  Widget _buildThemedActionButton(IconData icon, String tooltip, VoidCallback onPressed) {
+    final hasEmotion = _currentEmotion != '平静';
+    final themeColor = hasEmotion ? AppColors.softPink : AppColors.hazeBlue;
+
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      decoration: BoxDecoration(
+        color: themeColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: IconButton(
+        icon: Icon(icon, size: 18, color: themeColor),
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      ),
+    );
+  }
+
+  Widget _buildEmotionStatusBar() {
+    final hasEmotion = _currentEmotion != '平静';
+    final color = hasEmotion ? AppColors.softPink : AppColors.hazeBlue;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border(
+          left: BorderSide(color: color.withValues(alpha: 0.35), width: 3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              hasEmotion ? Icons.favorite_outline : Icons.cloud_outlined,
+              size: 16,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              hasEmotion
+                  ? '我感受到你现在有些$_currentEmotion'
+                  : (_useLlm
+                      ? '大模型模式${_useStream ? " · 实时流式" : " · 打字机"} · 随时倾诉'
+                      : '本地模式 · 打字机 · 随时倾诉'),
+              style: TextStyle(
+                fontSize: 13,
+                color: color,
+                height: 1.4,
+              ),
+            ),
           ),
         ],
       ),
-      endDrawer: Drawer(
-        width: 280,
-        child: SafeArea(
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return ListView(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: AppColors.softPink.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.softPink.withValues(alpha: 0.1)),
+          ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              // 大图标
               Container(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+                width: 88,
+                height: 88,
                 decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.softPink.withValues(alpha: 0.25),
+                      AppColors.softPink.withValues(alpha: 0.08),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('对话记录', style: Theme.of(context).textTheme.titleMedium),
-                    GestureDetector(
-                      onTap: _newConversation,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.hazeBlue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.add, size: 16, color: AppColors.hazeBlue),
-                            const SizedBox(width: 4),
-                            Text('新建', style: TextStyle(fontSize: 13, color: AppColors.hazeBlue)),
-                          ],
-                        ),
-                      ),
+                child: const Icon(Icons.favorite_outline, size: 40, color: AppColors.softPink),
+              ),
+              const SizedBox(height: 28),
+              // 诗意欢迎文字
+              Text(
+                '你好呀',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.softPink,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '我是你的暖心陪伴师',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '无论开心还是难过，我都在这里陪你',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.softPink.withValues(alpha: 0.55),
+                    ),
+              ),
+              const SizedBox(height: 20),
+              // 装饰性分割线
+              Text(
+                '~ ~ ~',
+                style: TextStyle(
+                  color: AppColors.softPink.withValues(alpha: 0.18),
+                  fontSize: 16,
+                  letterSpacing: 8,
                 ),
               ),
-              Expanded(
-                child: _conversations.isEmpty
-                    ? Center(
-                        child: Text('暂无对话记录', style: Theme.of(context).textTheme.bodySmall),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: _conversations.length,
-                        itemBuilder: (context, index) {
-                          final conv = _conversations[index];
-                          final isActive = _currentConversation?.id == conv.id;
-                          return ListTile(
-                            selected: isActive,
-                            selectedTileColor: AppColors.hazeBlue.withValues(alpha: 0.06),
-                            title: Text(
-                              conv.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '${conv.messages.length} 条消息 · ${conv.updatedAt.month}月${conv.updatedAt.day}日',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
-                            ),
-                            trailing: IconButton(
-                              icon: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
-                              onPressed: () => _deleteConversation(conv),
-                            ),
-                            onTap: () => _switchConversation(conv),
-                          );
-                        },
-                      ),
+              const SizedBox(height: 16),
+              Text(
+                '想说什么都可以告诉我',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontStyle: FontStyle.italic,
+                      color: AppColors.hazeBlue.withValues(alpha: 0.45),
+                    ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMessageGroupDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Center(
+        child: Text(
+          '·',
+          style: TextStyle(
+            color: AppColors.softPink.withValues(alpha: 0.18),
+            fontSize: 18,
           ),
         ),
       ),
@@ -731,46 +802,67 @@ class _ComfortPageState extends State<ComfortPage> {
 
   Widget _buildMessage(_ChatBubble msg, int index) {
     if (msg.isUser) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 16, left: 40),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.hazeBlue.withValues(alpha: 0.12),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
-                    bottomLeft: Radius.circular(18),
-                    bottomRight: Radius.circular(4),
-                  ),
-                ),
-                child: Text(msg.content, style: Theme.of(context).textTheme.bodyMedium),
-              ),
-            ),
-          ],
-        ),
-      );
+      return _buildUserMessage(msg);
     }
+    return _buildAiMessage(msg, index);
+  }
 
-    // AI回复
+  Widget _buildUserMessage(_ChatBubble msg) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16, left: 40),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.hazeBlue.withValues(alpha: 0.18),
+                    AppColors.hazeBlue.withValues(alpha: 0.08),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(18),
+                  bottomLeft: Radius.circular(18),
+                  bottomRight: Radius.circular(4),
+                ),
+              ),
+              child: Text(msg.content, style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiMessage(_ChatBubble msg, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16, right: 40),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // AI 头像 - 渐变圆形
           Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [AppColors.hazeBlue, AppColors.softPink],
+              gradient: const LinearGradient(
+                colors: [AppColors.softPink, AppColors.hazeBlue],
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.softPink.withValues(alpha: 0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
           ),
@@ -779,18 +871,28 @@ class _ComfortPageState extends State<ComfortPage> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: msg.isError ? AppColors.softPink.withValues(alpha: 0.08) : Theme.of(context).colorScheme.surface,
+                color: msg.isError
+                    ? AppColors.softPink.withValues(alpha: 0.08)
+                    : Theme.of(context).colorScheme.surface,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
                   bottomLeft: Radius.circular(4),
                   bottomRight: Radius.circular(18),
                 ),
+                border: Border(
+                  left: BorderSide(
+                    color: msg.isError
+                        ? AppColors.softPink.withValues(alpha: 0.5)
+                        : AppColors.softPink.withValues(alpha: 0.25),
+                    width: 3,
+                  ),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -810,18 +912,18 @@ class _ComfortPageState extends State<ComfortPage> {
                       selectable: true,
                       styleSheet: MarkdownStyleSheet(
                         p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.7,
-                          color: msg.isError ? AppColors.softPink : null,
-                        ),
+                              height: 1.7,
+                              color: msg.isError ? AppColors.softPink : null,
+                            ),
                         h1: Theme.of(context).textTheme.titleLarge,
                         h2: Theme.of(context).textTheme.titleMedium,
                         h3: Theme.of(context).textTheme.titleSmall,
                         strong: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                              fontWeight: FontWeight.bold,
+                            ),
                         em: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
+                              fontStyle: FontStyle.italic,
+                            ),
                         code: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 13,
@@ -833,38 +935,53 @@ class _ComfortPageState extends State<ComfortPage> {
                           border: Border.all(color: AppColors.divider, width: 0.5),
                         ),
                         blockquoteDecoration: BoxDecoration(
-                          color: AppColors.hazeBlue.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border(left: BorderSide(color: AppColors.hazeBlue, width: 3)),
+                          color: AppColors.softPink.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border(
+                            left: BorderSide(
+                              color: AppColors.softPink.withValues(alpha: 0.35),
+                              width: 3,
+                            ),
+                          ),
                         ),
                         horizontalRuleDecoration: BoxDecoration(
-                          border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+                          border: Border(
+                            top: BorderSide(
+                              color: AppColors.softPink.withValues(alpha: 0.15),
+                              width: 0.5,
+                            ),
+                          ),
                         ),
                         listBullet: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.7,
-                        ),
+                              height: 1.7,
+                            ),
                         tableHead: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                              fontWeight: FontWeight.bold,
+                            ),
                         tableBody: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
                   // AI消息朗读按钮（非流式、非空）
                   if (!msg.isStreaming && msg.content.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         GestureDetector(
                           onTap: _isLoading ? null : () => _speakMessage(index, msg.content),
                           child: Container(
-                            width: 30,
-                            height: 30,
+                            width: 32,
+                            height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: _playingMessageIndex == '$index'
-                                  ? AppColors.hazeBlue.withValues(alpha: 0.15)
+                                  ? AppColors.softPink.withValues(alpha: 0.15)
                                   : AppColors.textHint.withValues(alpha: 0.08),
+                              border: _playingMessageIndex == '$index'
+                                  ? Border.all(
+                                      color: AppColors.softPink.withValues(alpha: 0.3),
+                                    )
+                                  : null,
                             ),
                             child: Icon(
                               _playingMessageIndex == '$index'
@@ -872,18 +989,19 @@ class _ComfortPageState extends State<ComfortPage> {
                                   : Icons.volume_up_outlined,
                               size: 16,
                               color: _playingMessageIndex == '$index'
-                                  ? AppColors.hazeBlue
-                                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ? AppColors.softPink
+                                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                             ),
                           ),
                         ),
                         if (_playingMessageIndex == '$index') ...[
                           const SizedBox(width: 6),
                           SizedBox(
-                            width: 14, height: 14,
+                            width: 14,
+                            height: 14,
                             child: CircularProgressIndicator(
                               strokeWidth: 1.5,
-                              color: AppColors.hazeBlue.withValues(alpha: 0.6),
+                              color: AppColors.softPink.withValues(alpha: 0.6),
                             ),
                           ),
                         ],
@@ -912,17 +1030,288 @@ class _ComfortPageState extends State<ComfortPage> {
           height: 18,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: AppColors.hazeBlue.withValues(alpha: 0.5),
+            color: AppColors.softPink.withValues(alpha: 0.5),
           ),
         ),
         const SizedBox(width: 6),
         Text(
           '正在思考中',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontSize: 11,
+                color: AppColors.softPink.withValues(alpha: 0.5),
+              ),
         ),
       ],
     );
   }
+
+  Widget _buildInputArea() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(
+          top: BorderSide(
+            color: AppColors.softPink.withValues(alpha: 0.15),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 100),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.softPink.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: TextField(
+                  controller: _textController,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  enabled: !_isLoading,
+                  decoration: InputDecoration(
+                    hintText: _isLoading ? 'AI正在思考……' : '说说你的心事……',
+                    hintStyle: Theme.of(context).textTheme.bodySmall,
+                    filled: true,
+                    fillColor: isDark ? AppColors.darkInputFill : AppColors.milkWhite,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(
+                        color: AppColors.softPink.withValues(alpha: 0.4),
+                        width: 1,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: FilledButton(
+                onPressed: _isLoading ? null : _sendMessage,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.softPink,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.softPink.withValues(alpha: 0.3),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: _isLoading
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      )
+                    : const Icon(Icons.send_rounded, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // 侧边抽屉
+  // ============================================================
+
+  Widget _buildEndDrawer() {
+    return Drawer(
+      width: 280,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // 标题栏
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AppColors.divider, width: 0.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // 左侧强调条
+                  Container(
+                    width: 3,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppColors.softPink.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '对话记录',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  // 数量标签
+                  if (_conversations.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.softPink.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_conversations.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.softPink.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  // 新建按钮
+                  GestureDetector(
+                    onTap: _newConversation,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.softPink.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 16, color: AppColors.softPink),
+                          const SizedBox(width: 4),
+                          Text(
+                            '新建',
+                            style: TextStyle(fontSize: 13, color: AppColors.softPink),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 对话列表 或 空状态
+            Expanded(
+              child: _conversations.isEmpty
+                  ? _buildDrawerEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: _conversations.length,
+                      itemBuilder: (context, index) {
+                        final conv = _conversations[index];
+                        final isActive = _currentConversation?.id == conv.id;
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? AppColors.softPink.withValues(alpha: 0.06)
+                                : null,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            selected: isActive,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            title: Text(
+                              conv.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                                color: isActive ? AppColors.softPink : null,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${conv.messages.length} 条消息 · ${conv.updatedAt.month}月${conv.updatedAt.day}日',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(fontSize: 11),
+                            ),
+                            trailing: IconButton(
+                              icon: Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.3),
+                              ),
+                              onPressed: () => _deleteConversation(conv),
+                            ),
+                            onTap: () => _switchConversation(conv),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 44,
+              color: AppColors.softPink.withValues(alpha: 0.22),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '还没有对话记录',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '开始倾诉，每一段心语都会被温柔珍藏',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: AppColors.softPink.withValues(alpha: 0.4),
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // 对话管理方法
+  // ============================================================
 
   Future<void> _newConversation() async {
     // 保存当前对话（如果有内容）
@@ -958,7 +1347,20 @@ class _ComfortPageState extends State<ComfortPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('删除对话'),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.softPink.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_outline, size: 18, color: AppColors.softPink),
+            ),
+            const SizedBox(width: 8),
+            const Text('删除对话'),
+          ],
+        ),
         content: Text('确定要删除「${conv.title}」吗？'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
@@ -1003,7 +1405,20 @@ class _ComfortPageState extends State<ComfortPage> {
       context: context,
       builder: (ctx) => SimpleDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('选择朗读音色'),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.softPink.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.record_voice_over, size: 18, color: AppColors.softPink),
+            ),
+            const SizedBox(width: 8),
+            const Text('选择朗读音色'),
+          ],
+        ),
         children: voices.map((v) {
           final isSelected = v == _ttsVoiceType;
           return RadioListTile<String>(
@@ -1013,10 +1428,10 @@ class _ComfortPageState extends State<ComfortPage> {
               SpeechConfig.voiceTypeLabels[v] ?? v,
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? AppColors.hazeBlue : null,
+                color: isSelected ? AppColors.softPink : null,
               ),
             ),
-            activeColor: AppColors.hazeBlue,
+            activeColor: AppColors.softPink,
             onChanged: (value) async {
               if (value != null && value != _ttsVoiceType) {
                 await _storageService.setTtsVoiceType(value);
@@ -1039,7 +1454,14 @@ class _ComfortPageState extends State<ComfortPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Row(
             children: [
-              Icon(Icons.self_improvement, color: AppColors.hazeBlue),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.softPink.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.self_improvement, color: AppColors.softPink, size: 18),
+              ),
               const SizedBox(width: 8),
               const Text('深呼吸引导'),
             ],
@@ -1047,12 +1469,18 @@ class _ComfortPageState extends State<ComfortPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // 渐变圆环装饰
               Container(
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.hazeBlue.withValues(alpha: 0.1),
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.softPink.withValues(alpha: 0.15),
+                      AppColors.softPink.withValues(alpha: 0.04),
+                    ],
+                  ),
                 ),
                 child: Center(
                   child: Container(
@@ -1060,9 +1488,14 @@ class _ComfortPageState extends State<ComfortPage> {
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.hazeBlue.withValues(alpha: 0.2),
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.softPink.withValues(alpha: 0.25),
+                          AppColors.softPink.withValues(alpha: 0.08),
+                        ],
+                      ),
                     ),
-                    child: const Icon(Icons.air, color: AppColors.hazeBlue, size: 32),
+                    child: const Icon(Icons.air, color: AppColors.softPink, size: 32),
                   ),
                 ),
               ),
@@ -1070,7 +1503,7 @@ class _ComfortPageState extends State<ComfortPage> {
               Text(
                 _fallbackService.getBreathGuide(step),
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
               ),
             ],
           ),
@@ -1081,7 +1514,7 @@ class _ComfortPageState extends State<ComfortPage> {
             ),
             TextButton(
               onPressed: () => setDialogState(() => step++),
-              child: Text('下一步', style: TextStyle(color: AppColors.hazeBlue)),
+              child: Text('下一步', style: TextStyle(color: AppColors.softPink)),
             ),
           ],
         ),
@@ -1096,14 +1529,48 @@ class _ComfortPageState extends State<ComfortPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: [
-            Icon(Icons.nightlight, color: AppColors.gentlePurple),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.gentlePurple.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.nightlight, color: AppColors.gentlePurple, size: 18),
+            ),
             const SizedBox(width: 8),
             const Text('晚安'),
           ],
         ),
-        content: Text(
-          _fallbackService.getGoodnightWord(),
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 装饰元素
+            Center(
+              child: Icon(
+                Icons.nightlight_round,
+                size: 32,
+                color: AppColors.gentlePurple.withValues(alpha: 0.25),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _fallbackService.getGoodnightWord(),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.8),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            // 装饰性分割线
+            Center(
+              child: Text(
+                '~ ~ ~',
+                style: TextStyle(
+                  color: AppColors.gentlePurple.withValues(alpha: 0.18),
+                  fontSize: 14,
+                  letterSpacing: 6,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(

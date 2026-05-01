@@ -48,207 +48,290 @@ class _AnalysisPageState extends State<AnalysisPage> {
   @override
   Widget build(BuildContext context) {
     final latestRecord = _targetRecord;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDark
+        ? [AppColors.lightCyan.withValues(alpha: 0.1), AppColors.darkBackground]
+        : [AppColors.lightCyan.withValues(alpha: 0.06), AppColors.background];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('情绪分析报告')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          children: [
-            if (latestRecord == null)
-              _buildEmptyState()
-            else ...[
-              // 情绪雷达图卡片
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('情绪雷达图', style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          height: 200,
-                          child: EmotionRadarChart(record: latestRecord, textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 情绪维度详细数据
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('情绪维度', style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 16),
-                        _buildEmotionBar('悲伤', latestRecord.sadness, AppColors.softPink),
-                        _buildEmotionBar('焦虑', latestRecord.anxiety, AppColors.softOrange),
-                        _buildEmotionBar('愤怒', latestRecord.anger, AppColors.angerRed),
-                        _buildEmotionBar('孤独', latestRecord.loneliness, AppColors.gentlePurple),
-                        _buildEmotionBar('开心', latestRecord.happiness, AppColors.calmGreen),
-                        _buildEmotionBar('平静', latestRecord.calmness, AppColors.lightCyan),
-                        _buildEmotionBar('压抑', latestRecord.suppression, AppColors.warmBeige),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 情绪解读
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.auto_awesome, color: AppColors.hazeBlue, size: 18),
-                            const SizedBox(width: 8),
-                            Text('情绪解读', style: Theme.of(context).textTheme.titleMedium),
-                            if (_targetRecord?.interpretation.isNotEmpty == true) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.hazeBlue.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'AI深度分析',
-                                  style: TextStyle(fontSize: 10, color: AppColors.hazeBlue),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _getEmotionInterpretation(latestRecord!),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.8),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 情绪舒缓建议
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.spa_outlined, color: AppColors.calmGreen, size: 18),
-                            const SizedBox(width: 8),
-                            Text('舒缓建议', style: Theme.of(context).textTheme.titleMedium),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ..._getComfortSuggestions(latestRecord).map((s) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('• ', style: TextStyle(color: AppColors.calmGreen, fontWeight: FontWeight.bold)),
-                              Expanded(child: Text(s, style: Theme.of(context).textTheme.bodyMedium)),
-                            ],
-                          ),
-                        )),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 情绪历史趋势
-              if (_records.length >= 2)
-                Padding(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+          ),
+        ),
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              _buildSliverHeader(),
+              SliverToBoxAdapter(
+                child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('近期情绪趋势', style: Theme.of(context).textTheme.titleMedium),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      if (latestRecord == null)
+                        _buildEmptyState()
+                      else ...[
+                        _buildEmotionRadarCard(latestRecord),
+                        const SizedBox(height: 16),
+                        _buildEmotionDimensionCard(latestRecord),
+                        const SizedBox(height: 16),
+                        _buildInterpretationCard(latestRecord),
+                        const SizedBox(height: 16),
+                        _buildComfortCard(latestRecord),
+                        if (_records.length >= 2) ...[
                           const SizedBox(height: 16),
-                          _buildTrendChart(),
+                          _buildTrendCard(),
                         ],
-                      ),
-                    ),
+                      ],
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliverHeader() {
+    return SliverAppBar(
+      pinned: true,
+      title: const Text('情绪分析报告'),
+      centerTitle: false,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.lightCyan.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.lightCyan.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              Icons.analytics_outlined,
+              size: 40,
+              color: AppColors.lightCyan.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '还没有情绪数据',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '去树洞写下你的心事，我会为你分析每一份情绪',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmotionRadarCard(EmotionRecord record) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.lightCyan.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.lightCyan.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.radar,
+                    size: 16,
+                    color: AppColors.lightCyan,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '情绪雷达图',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 200,
+              child: EmotionRadarChart(
+                record: record,
+                textColor: Theme.of(context).textTheme.bodySmall?.color ?? AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 80),
-          Icon(Icons.analytics_outlined, size: 64, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
-          const SizedBox(height: 16),
-          Text('还没有情绪数据', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
-          const SizedBox(height: 8),
-          Text('去树洞写下你的心事，我会为你分析', style: Theme.of(context).textTheme.bodySmall),
+  Widget _buildEmotionDimensionCard(EmotionRecord record) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.lightCyan.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.lightCyan.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.bar_chart_rounded,
+                    size: 16,
+                    color: AppColors.lightCyan,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '情绪维度',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _buildEmotionBar('😢', '悲伤', record.sadness, AppColors.softPink),
+            _buildEmotionBar('😰', '焦虑', record.anxiety, AppColors.softOrange),
+            _buildEmotionBar('😠', '愤怒', record.anger, AppColors.angerRed),
+            _buildEmotionBar('🥺', '孤独', record.loneliness, AppColors.gentlePurple),
+            _buildEmotionBar('😊', '开心', record.happiness, AppColors.calmGreen),
+            _buildEmotionBar('😌', '平静', record.calmness, AppColors.lightCyan),
+            _buildEmotionBar('😔', '压抑', record.suppression, AppColors.warmBeige),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildEmotionBar(String label, double value, Color color) {
+  Widget _buildEmotionBar(String emoji, String label, double value, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
           SizedBox(
-            width: 40,
-            child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13)),
+            width: 28,
+            child: Text(emoji, style: const TextStyle(fontSize: 15)),
           ),
-          const SizedBox(width: 12),
+          SizedBox(
+            width: 40,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Stack(
               children: [
                 Container(
-                  height: 8,
+                  height: 10,
                   decoration: BoxDecoration(
                     color: AppColors.divider,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                 ),
                 FractionallySizedBox(
                   widthFactor: value.clamp(0.05, 1.0),
                   child: Container(
-                    height: 8,
+                    height: 10,
                     decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(4),
+                      gradient: LinearGradient(
+                        colors: [
+                          color.withValues(alpha: 0.9),
+                          color.withValues(alpha: 0.4),
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                   ),
                 ),
@@ -260,11 +343,291 @@ class _AnalysisPageState extends State<AnalysisPage> {
             width: 36,
             child: Text(
               '${(value * 100).toInt()}%',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: color.withValues(alpha: 0.7),
+                  ),
               textAlign: TextAlign.right,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInterpretationCard(EmotionRecord record) {
+    final hasAiAnalysis = record.interpretation.isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.lightCyan.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.lightCyan.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome,
+                    size: 16,
+                    color: AppColors.lightCyan,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '情绪解读',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                if (hasAiAnalysis) ...[
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.lightCyan.withValues(alpha: 0.12),
+                          AppColors.hazeBlue.withValues(alpha: 0.06),
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      border: const Border(
+                        left: BorderSide(
+                          color: AppColors.lightCyan,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'AI深度分析',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.lightCyan,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _getEmotionInterpretation(record),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.85,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                '~ ~ ~',
+                style: TextStyle(
+                  color: AppColors.lightCyan.withValues(alpha: 0.2),
+                  fontSize: 16,
+                  letterSpacing: 8,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComfortCard(EmotionRecord record) {
+    final suggestions = _getComfortSuggestions(record);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.calmGreen.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.calmGreen.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppColors.calmGreen.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.calmGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.spa_outlined,
+                    size: 16,
+                    color: AppColors.calmGreen,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '舒缓建议',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ...suggestions.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.calmGreen.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.calmGreen.withValues(alpha: 0.08),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: AppColors.calmGreen.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.favorite_border_rounded,
+                            size: 14,
+                            color: AppColors.calmGreen,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            s,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  height: 1.5,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrendCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.lightCyan.withValues(alpha: 0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.lightCyan.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightCyan.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.trending_up_rounded,
+                    size: 16,
+                    color: AppColors.lightCyan,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '近期情绪趋势',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _buildTrendChart(),
+          ],
+        ),
       ),
     );
   }
@@ -328,6 +691,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
           // 正向指数：0~1，越高情绪越积极
           final positive = (r.happiness + r.calmness) / 2;
           final barHeight = 24 + (positive * 72); // 24~96，安全范围
+          final dominantColor = emotionColors[r.dominantEmotion] ?? AppColors.hazeBlue;
+
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
@@ -336,14 +701,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (emotionColors[r.dominantEmotion] ?? AppColors.hazeBlue).withValues(alpha: 0.12),
+                  color: dominantColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   r.dominantEmotion,
                   style: TextStyle(
                     fontSize: 10,
-                    color: emotionColors[r.dominantEmotion] ?? AppColors.hazeBlue,
+                    color: dominantColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -353,7 +718,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
                 width: 22,
                 height: barHeight,
                 decoration: BoxDecoration(
-                  color: (emotionColors[r.dominantEmotion] ?? AppColors.hazeBlue).withValues(alpha: 0.5),
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      dominantColor.withValues(alpha: 0.7),
+                      dominantColor.withValues(alpha: 0.25),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
