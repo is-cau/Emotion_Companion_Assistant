@@ -12,6 +12,7 @@ import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
 import '../../widgets/llm_config_dialog.dart';
 import '../../widgets/speech_config_dialog.dart';
+import '../../widgets/speech_params_dialog.dart';
 
 class ComfortPage extends StatefulWidget {
   const ComfortPage({super.key});
@@ -458,6 +459,8 @@ class _ComfortPageState extends State<ComfortPage> {
                 _showVoicePicker();
               } else if (value == 'config') {
                 _showLlmConfigDialog();
+              } else if (value == 'speech_params') {
+                showSpeechParamsDialog(context).then((_) => _speechService.reloadTtsConfig());
               } else if (value == 'tts_config') {
                 showSpeechConfigDialog(context).then((_) => _speechService.reloadTtsConfig());
               }
@@ -515,6 +518,16 @@ class _ComfortPageState extends State<ComfortPage> {
                     Icon(Icons.settings_outlined, size: 18),
                     SizedBox(width: 8),
                     Text('大模型配置'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'speech_params',
+                child: Row(
+                  children: [
+                    Icon(Icons.tune, size: 18),
+                    SizedBox(width: 8),
+                    Text('语音参数'),
                   ],
                 ),
               ),

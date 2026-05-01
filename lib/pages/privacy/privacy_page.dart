@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/llm_config_dialog.dart';
 import '../../widgets/speech_config_dialog.dart';
+import '../../widgets/speech_params_dialog.dart';
 
 class PrivacyPage extends StatefulWidget {
   const PrivacyPage({super.key});
@@ -188,6 +189,21 @@ class PrivacyPageState extends State<PrivacyPage> {
                   subtitle: '自定义API地址、Key和模型',
                   color: AppColors.hazeBlue,
                   onTap: () => showLlmConfigDialog(context),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 语音参数
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Card(
+                child: _buildActionTile(
+                  icon: Icons.tune,
+                  title: '语音参数',
+                  subtitle: '调节语速和音量',
+                  color: AppColors.gentlePurple,
+                  onTap: () => showSpeechParamsDialog(context),
                 ),
               ),
             ),

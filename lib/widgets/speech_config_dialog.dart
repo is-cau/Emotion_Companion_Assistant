@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../app/themes/app_colors.dart';
-import '../app/config/speech_config.dart';
 import '../services/speech_service.dart';
 import '../services/storage_service.dart';
 
@@ -11,8 +10,6 @@ Future<void> showSpeechConfigDialog(BuildContext context) async {
   final userUrl = await storageService.getTtsBaseUrl();
   final userKey = await storageService.getTtsApiKey();
   final userModel = await storageService.getTtsModel();
-  final userSpeed = await storageService.getTtsSpeed();
-  final userVolume = await storageService.getTtsVolume();
   final hasUserConfig = userUrl != null && userUrl.isNotEmpty
       && userKey != null && userKey.isNotEmpty;
 
@@ -24,8 +21,6 @@ Future<void> showSpeechConfigDialog(BuildContext context) async {
   bool testPassed = hasUserConfig;
   bool hasConfig = hasUserConfig;
   String? inlineError;
-  double speed = userSpeed ?? SpeechConfig.ttsSpeed;
-  double volume = userVolume ?? SpeechConfig.defaultVolume;
 
   if (!context.mounted) return;
   await showDialog(
@@ -116,56 +111,6 @@ Future<void> showSpeechConfigDialog(BuildContext context) async {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   style: const TextStyle(fontSize: 13),
-                ),
-
-                // 语速
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Text('语速', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    const Spacer(),
-                    Text(speed.toStringAsFixed(1), style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.5))),
-                  ],
-                ),
-                Slider(
-                  value: speed,
-                  min: 0.5,
-                  max: 2.0,
-                  divisions: 15,
-                  activeColor: AppColors.gentlePurple,
-                  onChanged: isTesting ? null : (v) => setDialogState(() { speed = v; testPassed = false; inlineError = null; }),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('0.5x 慢速', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                    Text('2.0x 快速', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                  ],
-                ),
-
-                // 音量
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text('音量', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    const Spacer(),
-                    Text(volume.toStringAsFixed(1), style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.5))),
-                  ],
-                ),
-                Slider(
-                  value: volume,
-                  min: 0.1,
-                  max: 3.0,
-                  divisions: 29,
-                  activeColor: AppColors.gentlePurple,
-                  onChanged: isTesting ? null : (v) => setDialogState(() { volume = v; testPassed = false; inlineError = null; }),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('0.1x 静音', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                    Text('3.0x 响亮', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                  ],
                 ),
 
                 if (inlineError != null) ...[
@@ -313,8 +258,6 @@ Future<void> showSpeechConfigDialog(BuildContext context) async {
                           await storageService.setTtsBaseUrl(url);
                           await storageService.setTtsApiKey(key);
                           await storageService.setTtsModel(model);
-                          await storageService.setTtsSpeed(speed);
-                          await storageService.setTtsVolume(volume);
                           await speechService.reloadTtsConfig();
                           Navigator.pop(ctx);
                         },
@@ -347,8 +290,6 @@ Future<void> showSpeechConfigDialog(BuildContext context) async {
                           hasConfig = false;
                           testPassed = true;
                           inlineError = null;
-                          speed = SpeechConfig.ttsSpeed;
-                          volume = SpeechConfig.defaultVolume;
                         });
                       },
                       child: Text(
