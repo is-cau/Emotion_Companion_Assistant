@@ -7,6 +7,7 @@ import '../../models/emotion_models.dart';
 import '../../app/routes/app_routes.dart';
 import '../../widgets/emotion_radar.dart';
 import '../../widgets/heartbeat_breath_button.dart';
+import '../../widgets/fortune_draw.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onNavigateToComfort;
@@ -21,12 +22,16 @@ class HomePageState extends State<HomePage> {
   final StorageService _storageService = StorageService();
   List<EmotionRecord> _records = [];
   String _greeting = '';
+  String? _fortuneDate;
+  FortuneLevel? _fortuneLevel;
+  String? _fortuneBlessing;
 
   @override
   void initState() {
     super.initState();
     _loadData();
     _setGreeting();
+    _loadFortuneState();
   }
 
   void _setGreeting() {
@@ -46,6 +51,34 @@ class HomePageState extends State<HomePage> {
     } else {
       _greeting = '夜深了，把烦恼留给明天';
     }
+  }
+
+  Future<void> _loadFortuneState() async {
+    final date = await _storageService.getFortuneDate();
+    final today = '${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}';
+    if (date == today) {
+      final levelIdx = await _storageService.getFortuneLevel();
+      final blessing = await _storageService.getFortuneBlessing();
+      if (levelIdx != null && blessing != null && mounted) {
+        setState(() {
+          _fortuneDate = date;
+          _fortuneLevel = FortuneLevel.values[levelIdx];
+          _fortuneBlessing = blessing;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveFortune(
+      String date, FortuneLevel level, String blessing) async {
+    await _storageService.setFortuneDate(date);
+    await _storageService.setFortuneLevel(level.index);
+    await _storageService.setFortuneBlessing(blessing);
+    setState(() {
+      _fortuneDate = date;
+      _fortuneLevel = level;
+      _fortuneBlessing = blessing;
+    });
   }
 
   Future<void> _loadData() async {
@@ -237,6 +270,11 @@ class HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 32),
 
+                      // ===== Fortune Section =====
+                      _buildFortuneSection(),
+
+                      const SizedBox(height: 16),
+
                       // ===== Today's Emotion Card =====
                       _buildTodayEmotionCard(todayAggregated, todayCount),
 
@@ -391,6 +429,44 @@ class HomePageState extends State<HomePage> {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.textHint,
                 ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============= Fortune Section =============
+
+  Widget _buildFortuneSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.warmBeige.withValues(alpha: 0.18),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('今日一签', AppColors.warmBeige),
+          const SizedBox(height: 8),
+          FortuneDraw(
+            savedDate: _fortuneDate,
+            savedLevel: _fortuneLevel,
+            savedBlessing: _fortuneBlessing,
+            onFortuneDrawn: _saveFortune,
           ),
         ],
       ),

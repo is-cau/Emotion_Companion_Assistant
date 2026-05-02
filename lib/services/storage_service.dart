@@ -27,6 +27,9 @@ class StorageService {
   static const String _pendingDreamTextKey = 'pending_dream_text';
   static const String _pendingDreamIdKey = 'pending_dream_id';
   static const String _darkModeKey = 'dark_mode';
+  static const String _fortuneDateKey = 'fortune_date';
+  static const String _fortuneLevelKey = 'fortune_level';
+  static const String _fortuneBlessingKey = 'fortune_blessing';
 
   Box _settings() => Hive.box(_settingsBox);
   Box<EmotionRecord> _records() => Hive.box<EmotionRecord>(_recordsBox);
@@ -276,5 +279,19 @@ class StorageService {
     await _settings().delete(_ttsModelKey);
     await _settings().delete(_ttsSpeedKey);
     await _settings().delete(_ttsVolumeKey);
+  }
+
+  // ===== 抽签 =====
+
+  Future<String?> getFortuneDate() async => _settings().get(_fortuneDateKey);
+  Future<void> setFortuneDate(String date) async => _settings().put(_fortuneDateKey, date);
+  Future<int?> getFortuneLevel() async => _settings().get(_fortuneLevelKey);
+  Future<void> setFortuneLevel(int level) async => _settings().put(_fortuneLevelKey, level);
+  Future<String?> getFortuneBlessing() async => _settings().get(_fortuneBlessingKey);
+  Future<void> setFortuneBlessing(String blessing) async => _settings().put(_fortuneBlessingKey, blessing);
+  Future<void> clearFortune() async {
+    await _settings().delete(_fortuneDateKey);
+    await _settings().delete(_fortuneLevelKey);
+    await _settings().delete(_fortuneBlessingKey);
   }
 }
