@@ -503,102 +503,104 @@ class _ComfortPageState extends State<ComfortPage> {
         ],
       ),
       actions: [
-        PopupMenuButton<String>(
-          tooltip: '显示菜单',
-          offset: const Offset(0, 44),
-          icon: Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: themeColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              _useLlm ? Icons.cloud_outlined : Icons.cloud_off_outlined,
+        _buildThemedActionButton(Icons.self_improvement, '深呼吸引导', _showBreathGuide),
+        _buildThemedActionButton(Icons.nightlight_outlined, '晚安语录', _showGoodnight),
+        Container(
+          margin: const EdgeInsets.only(right: 4),
+          decoration: BoxDecoration(
+            color: themeColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: PopupMenuButton<String>(
+            tooltip: '显示菜单',
+            offset: const Offset(0, 44),
+            padding: const EdgeInsets.all(8),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            icon: Icon(
+              Icons.settings_outlined,
               size: 18,
               color: themeColor,
             ),
+            onSelected: _onPopupMenuSelected,
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'toggle_llm',
+                child: Row(
+                  children: [
+                    Icon(_useLlm ? Icons.cloud_off_outlined : Icons.cloud_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Text(_useLlm ? '切换到本地模式' : '切换到大模型模式'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'toggle_stream',
+                child: Row(
+                  children: [
+                    Icon(_useStream ? Icons.stream : Icons.text_fields, size: 18),
+                    const SizedBox(width: 8),
+                    Text(_useStream ? '关闭流式（打字机）' : '开启流式（实时）'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'voice',
+                child: Row(
+                  children: [
+                    Icon(
+                      _ttsVoiceType == SpeechConfig.voiceTypeMale
+                          ? Icons.man_outlined
+                          : Icons.woman_outlined,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text('朗读音色: ${SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '未知'}'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    Icon(Icons.add_comment_outlined, size: 18),
+                    SizedBox(width: 8),
+                    Text('新建对话'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'config',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings_outlined, size: 18),
+                    SizedBox(width: 8),
+                    Text('大模型配置'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'speech_params',
+                child: Row(
+                  children: [
+                    Icon(Icons.tune, size: 18),
+                    SizedBox(width: 8),
+                    Text('语音参数'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'tts_config',
+                child: Row(
+                  children: [
+                    Icon(Icons.record_voice_over, size: 18),
+                    SizedBox(width: 8),
+                    Text('语音合成配置'),
+                  ],
+                ),
+              ),
+            ],
           ),
-          onSelected: _onPopupMenuSelected,
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'toggle_llm',
-              child: Row(
-                children: [
-                  Icon(_useLlm ? Icons.cloud_off_outlined : Icons.cloud_outlined, size: 18),
-                  const SizedBox(width: 8),
-                  Text(_useLlm ? '切换到本地模式' : '切换到大模型模式'),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'toggle_stream',
-              child: Row(
-                children: [
-                  Icon(_useStream ? Icons.stream : Icons.text_fields, size: 18),
-                  const SizedBox(width: 8),
-                  Text(_useStream ? '关闭流式（打字机）' : '开启流式（实时）'),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'voice',
-              child: Row(
-                children: [
-                  Icon(
-                    _ttsVoiceType == SpeechConfig.voiceTypeMale
-                        ? Icons.man_outlined
-                        : Icons.woman_outlined,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text('朗读音色: ${SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '未知'}'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'clear',
-              child: Row(
-                children: [
-                  Icon(Icons.add_comment_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text('新建对话'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'config',
-              child: Row(
-                children: [
-                  Icon(Icons.settings_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text('大模型配置'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'speech_params',
-              child: Row(
-                children: [
-                  Icon(Icons.tune, size: 18),
-                  SizedBox(width: 8),
-                  Text('语音参数'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'tts_config',
-              child: Row(
-                children: [
-                  Icon(Icons.record_voice_over, size: 18),
-                  SizedBox(width: 8),
-                  Text('语音合成配置'),
-                ],
-              ),
-            ),
-          ],
         ),
-        _buildThemedActionButton(Icons.self_improvement, '深呼吸引导', _showBreathGuide),
-        _buildThemedActionButton(Icons.nightlight_outlined, '晚安语录', _showGoodnight),
       ],
     );
   }
@@ -1471,46 +1473,49 @@ class _ComfortPageState extends State<ComfortPage> {
               const Text('深呼吸引导'),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 渐变圆环装饰
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.softPink.withValues(alpha: 0.15),
-                      AppColors.softPink.withValues(alpha: 0.04),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          AppColors.softPink.withValues(alpha: 0.25),
-                          AppColors.softPink.withValues(alpha: 0.08),
-                        ],
-                      ),
+          content: SizedBox(
+            height: 260,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 渐变圆环装饰
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.softPink.withValues(alpha: 0.15),
+                        AppColors.softPink.withValues(alpha: 0.04),
+                      ],
                     ),
-                    child: const Icon(Icons.air, color: AppColors.softPink, size: 32),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            AppColors.softPink.withValues(alpha: 0.25),
+                            AppColors.softPink.withValues(alpha: 0.08),
+                          ],
+                        ),
+                      ),
+                      child: const Icon(Icons.air, color: AppColors.softPink, size: 32),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _fallbackService.getBreathGuide(step),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
-              ),
-            ],
+                const SizedBox(height: 20),
+                Text(
+                  _fallbackService.getBreathGuide(step),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
