@@ -249,6 +249,12 @@ class HomePageState extends State<HomePage> {
                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 surfaceTintColor: Colors.transparent,
                 elevation: 0,
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _buildFortuneCircle(),
+                  ),
+                ],
               ),
 
               // ===== All Content =====
@@ -269,11 +275,6 @@ class HomePageState extends State<HomePage> {
                       _buildHeartbeatSection(),
 
                       const SizedBox(height: 32),
-
-                      // ===== Fortune Section =====
-                      _buildFortuneSection(),
-
-                      const SizedBox(height: 16),
 
                       // ===== Today's Emotion Card =====
                       _buildTodayEmotionCard(todayAggregated, todayCount),
@@ -437,38 +438,52 @@ class HomePageState extends State<HomePage> {
 
   // ============= Fortune Section =============
 
-  Widget _buildFortuneSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.warmBeige.withValues(alpha: 0.18),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+  Widget _buildFortuneCircle() {
+    return GestureDetector(
+      onTap: () => _showFortuneDialog(),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.warmBeige.withValues(alpha: 0.15),
+          border: Border.all(
+            color: AppColors.warmBeige.withValues(alpha: 0.3),
+            width: 1,
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        ),
+        child: const Center(
+          child: Text('🎋', style: TextStyle(fontSize: 16)),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader('今日一签', AppColors.warmBeige),
-          const SizedBox(height: 8),
-          FortuneDraw(
-            savedDate: _fortuneDate,
-            savedLevel: _fortuneLevel,
-            savedBlessing: _fortuneBlessing,
-            onFortuneDrawn: _saveFortune,
-          ),
-        ],
+    );
+  }
+
+  void _showFortuneDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Text('🎋', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text('今日一签',
+                style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(ctx).colorScheme.onSurface)),
+          ],
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        content: FortuneDraw(
+          savedDate: _fortuneDate,
+          savedLevel: _fortuneLevel,
+          savedBlessing: _fortuneBlessing,
+          onFortuneDrawn: _saveFortune,
+        ),
       ),
     );
   }
