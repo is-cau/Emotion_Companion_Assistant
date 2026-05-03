@@ -48,12 +48,20 @@ emotion_companion/
 │   │   ├── emotion_radar.dart       # 情绪雷达图组件
 │   │   ├── heartbeat_breath_button.dart # 呼吸粒子动画按钮
 │   │   ├── fortune_draw.dart        # 每日抽签组件（3D翻转+全正向签文）
-│   │   └── fortune_calendar.dart    # 签到日历组件
+│   │   ├── fortune_calendar.dart    # 签到日历组件
+│   │   ├── unified_config_dialog.dart # 统一API配置弹窗（LLM + TTS 双标签页）
+│   │   ├── speech_params_dialog.dart  # 语音参数弹窗（语速/音量调节）
+│   │   ├── app_splash.dart          # 启动页
+│   │   ├── llm_config_dialog.dart   # [已删除] 合并至 unified_config_dialog
+│   │   └── speech_config_dialog.dart  # [已删除] 合并至 unified_config_dialog
 │   ├── services/
 │   │   ├── llm_service.dart         # 大模型API（流式SSE/普通/情绪分析/标题生成）
 │   │   ├── emotion_service.dart     # 本地情感分析（关键词权重算法）
 │   │   ├── ai_comfort_service.dart  # 本地预设安慰话术（降级备选）
-│   │   └── storage_service.dart     # 本地存储（记录/对话/密码/暗色模式）
+│   │   ├── speech_service.dart      # 豆包TTS语音合成（文本转语音+音频播放）
+│   │   ├── storage_service.dart     # 本地存储（记录/对话/密码/暗色模式/TTS配置）
+│   │   ├── hive_adapters.dart       # Hive类型适配器
+│   │   └── icon_service.dart        # 图标服务
 │   └── models/
 │       └── emotion_models.dart      # EmotionRecord / ChatMessage / Conversation
 ├── assets/
@@ -96,11 +104,16 @@ emotion_companion/
 - ✅ 打字光标闪烁特效（`▌`，530ms间隔）
 - ✅ 流式失败自动降级链：SSE → 普通模式 → 本地话术
 - ✅ 对话历史持久化（最多50个对话，SharedPreferences存储）
-- ✅ 新建/切换/删除对话（endDrawer侧边栏 + 顶部菜单）
+- ✅ 新建/切换/删除对话（endDrawer侧边栏）
 - ✅ AI自动生成对话标题（≤10字，首次交换后LLM生成）
 - ✅ 情感陪伴师角色系统提示词（温柔共情+8条行为准则）
 - ✅ 对话上下文记忆（最近20轮）
 - ✅ 深呼吸引导弹窗 + 晚安语录弹窗
+- ✅ AI消息朗读（豆包TTS，可切换音色，流式结束后显示播放按钮）
+- ✅ 右上角设置菜单（分组美化：对话模式/语音设置/更多）
+- ✅ 统一API配置弹窗（LLM+TTS双标签页，测试连接+保存）
+- ✅ 语音参数弹窗（语速/音量滑块调节）
+- ✅ 新建对话立即显示欢迎消息
 
 ### 2.5 情绪分析报告页面
 - ✅ 情绪雷达图（7维度：悲伤/焦虑/愤怒/孤独/开心/平静/压抑）
@@ -115,6 +128,7 @@ emotion_companion/
 - ✅ 一键清空所有记录
 - ✅ 修改树洞密码（无旧密码直接设置→专属提示；有旧密码先验证→再设新密码）
 - ✅ 隐私政策说明（7条合规声明）
+- ✅ API配置入口（统一弹窗：LLM + TTS 双标签页）
 
 ---
 
@@ -144,6 +158,8 @@ emotion_companion/
 - ✅ 配置文件 `lib/app/config/llm_config.dart`
 - ✅ 支持任意OpenAI兼容格式API
 - ✅ 可配置项：baseUrl / apiKey / model / maxTokens / temperature
+- ✅ 统一API配置弹窗（LLM + TTS 双标签页，运行时动态配置）
+- ✅ 测试连接 + 保存 + 恢复默认
 
 **配置示例：**
 ```dart
@@ -152,6 +168,13 @@ static const String baseUrl = 'https://api.openai.com/v1';  // 或其他兼容�
 static const String apiKey = 'sk-xxxxxxxxxxxxxxxx';
 static const String model = 'gpt-3.5-turbo';               // 或 qwen-turbo / deepseek-chat 等
 ```
+
+### 3.7 TTS 语音合成
+- ✅ 豆包TTS API集成（HTTP POST + 音频文件下载）
+- ✅ 朗读AI回复消息（截取前300字，去除Markdown符号）
+- ✅ 音色切换（男声/女声，持久化存储）
+- ✅ 语音参数调节（语速 0.5x-2.0x / 音量 0.1x-3.0x）
+- ✅ TTS API 运行时配置（baseUrl / apiKey / model）
 
 ### 3.4 本地存储
 - ✅ SharedPreferences本地存储
@@ -234,6 +257,9 @@ flutter build web
 ### 4.1 功能增强
 - [x] 每日一签 + 签到日历（全正向签文、3D翻转动画、日历标记）
 - [x] 情绪趋势折线图（柱状图顶部连线 + 方向箭头）
+- [x] TTS 语音合成（豆包API，朗读AI消息，音色切换，语速/音量调节）
+- [x] 统一API配置弹窗（LLM+TTS双标签页，运行时测试连接+保存）
+- [x] 设置菜单UI美化（分组+彩色图标+标题副标题）
 - [ ] 语音识别输入
 - [ ] 接入huggingface中文预训练模型
 - [ ] 白噪音实际音频播放
