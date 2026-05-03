@@ -45,7 +45,10 @@ emotion_companion/
 │   │   └── privacy/
 │   │       └── privacy_page.dart    # 隐私中心（锁定/密码/暗色模式/清空）
 │   ├── widgets/
-│   │   └── emotion_radar.dart       # 情绪雷达图组件
+│   │   ├── emotion_radar.dart       # 情绪雷达图组件
+│   │   ├── heartbeat_breath_button.dart # 呼吸粒子动画按钮
+│   │   ├── fortune_draw.dart        # 每日抽签组件（3D翻转+全正向签文）
+│   │   └── fortune_calendar.dart    # 签到日历组件
 │   ├── services/
 │   │   ├── llm_service.dart         # 大模型API（流式SSE/普通/情绪分析/标题生成）
 │   │   ├── emotion_service.dart     # 本地情感分析（关键词权重算法）
@@ -71,7 +74,9 @@ emotion_companion/
 ### 2.2 首页 (Home Page)
 - ✅ 顶部暖心问候标语（根据时段自动切换，居中显示）
 - ✅ 今日情绪状态卡片（聚合当天所有日记的7维度平均分，无记录显示"未知"）
-- ✅ 情绪波动柱状图（相对日期：今天/昨天/周X）
+- ✅ 每日一签功能（全正向签等：上上上签/上上签/上签，3D翻转动画+寄语，每日固定）
+- ✅ 签到日历（月历标记已抽签日期，今日高亮，独立弹窗可返回抽签界面）
+- ✅ 情绪波动柱状图 + 趋势折线（带箭头方向指示）
 - ✅ 快捷功能入口（AI暖心安慰→切换到安慰Tab，保持同一对话实例）
 
 ### 2.3 情绪树洞页面 (Treehole Page)
@@ -227,6 +232,8 @@ flutter build web
 ## 第四阶段：待完成
 
 ### 4.1 功能增强
+- [x] 每日一签 + 签到日历（全正向签文、3D翻转动画、日历标记）
+- [x] 情绪趋势折线图（柱状图顶部连线 + 方向箭头）
 - [ ] 语音识别输入
 - [ ] 接入huggingface中文预训练模型
 - [ ] 白噪音实际音频播放

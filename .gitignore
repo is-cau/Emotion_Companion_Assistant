@@ -50,6 +50,9 @@ __pycache__/
 # Claude Code
 .claude/
 
+# Plan files
+**/plans/
+
 # Development
 DEVELOPMENT_PLAN.md
 

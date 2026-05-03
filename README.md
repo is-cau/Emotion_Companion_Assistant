@@ -10,7 +10,9 @@
 - 根据时段自动切换暖心问候语
 - 今日情绪状态总览（聚合当天所有日记的综合分析）
 - 呼吸粒子动画倾诉按钮（HeartbeatBreathButton）
-- 近期情绪波动柱状图（相对日期：今天/昨天/周X）
+- 每日一签（全正向签等：上上上签/上上签/上签，3D 翻转动画查看寄语，每日固定结果）
+- 签到日历（月历标记已抽签日期，今天高亮）
+- 近期情绪波动柱状图 + 趋势折线（带箭头方向指示）
 - 快捷入口（2×2 网格）：AI 暖心安慰、情绪分析、隐私中心、AI 梦境解读
 
 ### 情绪树洞
@@ -108,6 +110,8 @@ lib/
 ├── widgets/
 │   ├── emotion_radar.dart              # 情绪雷达图（CustomPaint）
 │   ├── heartbeat_breath_button.dart    # 呼吸粒子动画按钮
+│   ├── fortune_draw.dart               # 每日抽签（3D 翻转动画 + 全正向签文）
+│   ├── fortune_calendar.dart           # 签到日历（月历标记 + 今日高亮）
 │   ├── app_splash.dart                 # 启动闪屏动画
 │   ├── llm_config_dialog.dart          # 大模型配置弹窗
 │   └── speech_config_dialog.dart       # 语音合成配置弹窗

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/themes/app_colors.dart';
@@ -838,65 +839,24 @@ class HomePageState extends State<HomePage> {
 
   Widget _buildEmotionTimeline() {
     final recent = _records.take(7).toList().reversed.toList();
-    return SizedBox(
-      height: 110,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: recent.map((r) {
-          final emotionColor = _emotionColor(r.dominantEmotion);
-          final positive = (r.happiness + r.calmness) / 2;
-          final barHeight = 20 + (positive * 42);
+    if (recent.isEmpty) return const SizedBox.shrink();
 
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Dominant emotion label
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: emotionColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  r.dominantEmotion,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: emotionColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              // Bar with gradient
-              Container(
-                width: 14,
-                height: barHeight,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      emotionColor.withValues(alpha: 0.7),
-                      emotionColor.withValues(alpha: 0.25),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-              ),
-              const SizedBox(height: 6),
-              // Date label
-              Text(
-                _formatTimelineDate(r.createdAt),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      color: AppColors.textSecondary,
-                    ),
-              ),
-            ],
+    return SizedBox(
+      height: 120,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final totalW = constraints.maxWidth;
+          final colW = recent.length > 0 ? totalW / recent.length : totalW;
+          return CustomPaint(
+            size: Size(totalW, 120),
+            painter: _EmotionTimelinePainter(
+              records: recent,
+              emotionColorFn: _emotionColor,
+              colWidth: colW,
+              formatDate: _formatTimelineDate,
+            ),
           );
-        }).toList(),
+        },
       ),
     );
   }
@@ -958,3 +918,149 @@ class HomePageState extends State<HomePage> {
     );
   }
 }
+
+class _EmotionTimelinePainter extends CustomPainter {
+  final List<EmotionRecord> records;
+  final Color Function(String) emotionColorFn;
+  final double colWidth;
+  final String Function(DateTime) formatDate;
+
+  _EmotionTimelinePainter({
+    required this.records,
+    required this.emotionColorFn,
+    required this.colWidth,
+    required this.formatDate,
+  });
+
+  static const _barW = 14.0;
+  static const _labelGap = 6.0;
+  static const _dateGap = 6.0;
+  static const _labelFontSize = 9.0;
+  static const _dateFontSize = 10.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (records.isEmpty) return;
+
+    final n = records.length;
+    final barBottomY = size.height - 18; // date(~12) + gap(6)
+
+    // Draw each bar + labels + date
+    for (int i = 0; i < n; i++) {
+      final r = records[i];
+      final color = emotionColorFn(r.dominantEmotion);
+      final positive = (r.happiness + r.calmness) / 2;
+      final barH = 20 + (positive * 42);
+      final colCenterX = (i + 0.5) * colWidth;
+      final barTopY = barBottomY - barH;
+
+      // Emotion label
+      final labelTP = TextPainter(
+        text: TextSpan(
+          text: r.dominantEmotion,
+          style: TextStyle(fontSize: _labelFontSize, color: color, fontWeight: FontWeight.w600),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: colWidth);
+      labelTP.paint(canvas, Offset(colCenterX - labelTP.width / 2, barTopY - _labelGap - labelTP.height));
+
+      // Bar background (rounded rect top)
+      final barRect = RRect.fromLTRBR(
+        colCenterX - _barW / 2, barTopY,
+        colCenterX + _barW / 2, barBottomY,
+        const Radius.circular(7),
+      );
+      final barPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [color.withValues(alpha: 0.7), color.withValues(alpha: 0.25)],
+        ).createShader(Rect.fromLTRB(0, barTopY, 0, barBottomY));
+      canvas.drawRRect(barRect, barPaint);
+
+      // Date label
+      final dateTP = TextPainter(
+        text: TextSpan(
+          text: formatDate(r.createdAt),
+          style: const TextStyle(fontSize: _dateFontSize, color: AppColors.textSecondary),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: colWidth);
+      dateTP.paint(canvas, Offset(colCenterX - dateTP.width / 2, barBottomY + _dateGap));
+    }
+
+    // Draw dashed trend line connecting bar top midpoints
+    if (n < 2) return;
+    final points = <Offset>[];
+    for (int i = 0; i < n; i++) {
+      final positive = (records[i].happiness + records[i].calmness) / 2;
+      final barH = 20 + (positive * 42);
+      final x = (i + 0.5) * colWidth;
+      final y = barBottomY - barH;
+      points.add(Offset(x, y));
+    }
+
+    const dashLen = 5.0;
+    const gapLen = 4.0;
+    for (int i = 0; i < n - 1; i++) {
+      final color = emotionColorFn(records[i].dominantEmotion);
+      _drawDashedLine(canvas, points[i], points[i + 1], color, dashLen, gapLen);
+    }
+
+    // Arrowhead
+    final last = points.last;
+    final prev = points[n - 2];
+    final dx = last.dx - prev.dx;
+    final dy = last.dy - prev.dy;
+    final dist = math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.01) return;
+    final ndx = dx / dist;
+    final ndy = dy / dist;
+    final arrowPaint = Paint()
+      ..color = emotionColorFn(records.last.dominantEmotion)
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(last.dx, last.dy)
+      ..lineTo(last.dx - ndx * 10 + ndy * 4, last.dy - ndy * 10 - ndx * 4)
+      ..lineTo(last.dx - ndx * 10 - ndy * 4, last.dy - ndy * 10 + ndx * 4)
+      ..close();
+    canvas.drawPath(path, arrowPaint);
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset from, Offset to, Color color,
+      double dashLen, double gapLen) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final dx = to.dx - from.dx;
+    final dy = to.dy - from.dy;
+    final total = math.sqrt(dx * dx + dy * dy);
+    if (total < 0.01) return;
+    final ndx = dx / total;
+    final ndy = dy / total;
+
+    double drawn = 0;
+    bool onDash = true;
+    while (drawn < total) {
+      final segEnd = onDash
+          ? math.min(drawn + dashLen, total)
+          : math.min(drawn + gapLen, total);
+      if (onDash) {
+        canvas.drawLine(
+          Offset(from.dx + ndx * drawn, from.dy + ndy * drawn),
+          Offset(from.dx + ndx * segEnd, from.dy + ndy * segEnd),
+          paint,
+        );
+      }
+      drawn = segEnd;
+      onDash = !onDash;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _EmotionTimelinePainter old) =>
+      old.records != records || old.colWidth != colWidth;
+}
+
