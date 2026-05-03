@@ -19,14 +19,50 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDialogState) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        title: const Row(
-          children: [
-            Icon(Icons.tune, size: 22),
-            SizedBox(width: 8),
-            Expanded(child: Text('语音参数', style: TextStyle(fontSize: 17))),
-          ],
+        titlePadding: EdgeInsets.zero,
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        title: Container(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.softOrange.withValues(alpha: 0.08),
+                AppColors.softOrange.withValues(alpha: 0.01),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.softOrange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.tune, color: AppColors.softOrange, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('语音参数', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                    Text(
+                      '调节 TTS 朗读的语速与音量',
+                      style: TextStyle(fontSize: 11, color: AppColors.textHint),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -35,57 +71,41 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 语速
-                Row(
-                  children: [
-                    const Text('语速', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    const Spacer(),
-                    Text('${speed.toStringAsFixed(1)}x', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.gentlePurple)),
-                  ],
-                ),
-                Slider(
+                const SizedBox(height: 8),
+
+                _buildSliderSection(
+                  icon: Icons.speed,
+                  label: '语速',
                   value: speed,
+                  valueText: '${speed.toStringAsFixed(1)}x',
                   min: 0.5,
                   max: 2.0,
                   divisions: 15,
-                  activeColor: AppColors.gentlePurple,
+                  minLabel: '0.5x 慢速',
+                  maxLabel: '2.0x 快速',
+                  color: AppColors.softOrange,
                   onChanged: (v) => setDialogState(() => speed = v),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('0.5x 慢速', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                    Text('2.0x 快速', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                  ],
-                ),
+                const SizedBox(height: 20),
 
-                const SizedBox(height: 12),
-
-                // 音量
-                Row(
-                  children: [
-                    const Text('音量', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    const Spacer(),
-                    Text('${volume.toStringAsFixed(1)}x', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.gentlePurple)),
-                  ],
-                ),
-                Slider(
+                _buildSliderSection(
+                  icon: Icons.volume_up_outlined,
+                  label: '音量',
                   value: volume,
+                  valueText: '${volume.toStringAsFixed(1)}x',
                   min: 0.1,
                   max: 3.0,
                   divisions: 29,
-                  activeColor: AppColors.gentlePurple,
+                  minLabel: '0.1x 静音',
+                  maxLabel: '3.0x 响亮',
+                  color: AppColors.gentlePurple,
                   onChanged: (v) => setDialogState(() => volume = v),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('0.1x 静音', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                    Text('3.0x 响亮', style: TextStyle(fontSize: 10, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3))),
-                  ],
-                ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+                const Divider(height: 1),
+
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -99,29 +119,25 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
                           volume = SpeechConfig.defaultVolume;
                         });
                       },
-                      child: Text(
-                        '恢复默认',
-                        style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.5)),
-                      ),
+                      child: const Text('恢复默认', style: TextStyle(fontSize: 12)),
                     ),
                     const SizedBox(width: 8),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: const Text('取消', style: TextStyle(fontSize: 12)),
                     ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
+                    const SizedBox(width: 8),
+                    FilledButton(
                       onPressed: () async {
                         await storageService.setTtsSpeed(speed);
                         await storageService.setTtsVolume(volume);
                         await speechService.reloadTtsConfig();
                         if (ctx.mounted) Navigator.pop(ctx);
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.hazeBlue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.softOrange,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         elevation: 0,
                       ),
                       child: const Text('保存', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -133,6 +149,95 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
           ),
         ),
       ),
+    ),
+  );
+}
+
+Widget _buildSliderSection({
+  required IconData icon,
+  required String label,
+  required double value,
+  required String valueText,
+  required double min,
+  required double max,
+  required int divisions,
+  required String minLabel,
+  required String maxLabel,
+  required Color color,
+  required ValueChanged<double> onChanged,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: color.withValues(alpha: 0.08)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(width: 10),
+            Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                valueText,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 4,
+            thumbShape: const RoundSliderThumbShape(
+              enabledThumbRadius: 8,
+              pressedElevation: 4,
+            ),
+            overlayShape: const RoundSliderOverlayShape(
+              overlayRadius: 16,
+            ),
+            activeTrackColor: color,
+            inactiveTrackColor: color.withValues(alpha: 0.12),
+            thumbColor: color,
+            overlayColor: color.withValues(alpha: 0.08),
+          ),
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(minLabel, style: TextStyle(fontSize: 10, color: AppColors.textHint.withValues(alpha: 0.5))),
+              Text(maxLabel, style: TextStyle(fontSize: 10, color: AppColors.textHint.withValues(alpha: 0.5))),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }

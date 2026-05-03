@@ -103,7 +103,13 @@ class _AnalysisPageState extends State<AnalysisPage> {
   Widget _buildSliverHeader() {
     return SliverAppBar(
       pinned: true,
-      title: const Text('情绪分析报告'),
+      title: Text(
+        '情绪分析报告',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.hazeBlue,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
       centerTitle: false,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       surfaceTintColor: Colors.transparent,

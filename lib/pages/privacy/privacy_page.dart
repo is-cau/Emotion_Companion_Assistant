@@ -3,9 +3,7 @@ import 'package:get/get.dart';
 import '../../app/themes/app_colors.dart';
 import '../../app/app_controller.dart';
 import '../../services/storage_service.dart';
-import '../../widgets/llm_config_dialog.dart';
-import '../../widgets/speech_config_dialog.dart';
-import '../../widgets/speech_params_dialog.dart';
+import '../../widgets/unified_config_dialog.dart';
 
 class PrivacyPage extends StatefulWidget {
   const PrivacyPage({super.key});
@@ -48,7 +46,13 @@ class PrivacyPageState extends State<PrivacyPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('隐私中心'),
+        title: Text(
+          '隐私中心',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.hazeBlue,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
       ),
@@ -337,36 +341,10 @@ class PrivacyPageState extends State<PrivacyPage> {
               children: [
                 _buildActionTile(
                   icon: Icons.api,
-                  title: '大模型配置',
-                  subtitle: '自定义API地址、Key和模型',
+                  title: 'API 配置',
+                  subtitle: '大模型 & 语音合成 API 设置',
                   color: AppColors.hazeBlue,
-                  onTap: () => showLlmConfigDialog(context),
-                ),
-                Divider(
-                  height: 1,
-                  indent: 64,
-                  endIndent: 20,
-                  color: AppColors.hazeBlue.withValues(alpha: 0.10),
-                ),
-                _buildActionTile(
-                  icon: Icons.tune,
-                  title: '语音参数',
-                  subtitle: '调节语速和音量',
-                  color: AppColors.gentlePurple,
-                  onTap: () => showSpeechParamsDialog(context),
-                ),
-                Divider(
-                  height: 1,
-                  indent: 64,
-                  endIndent: 20,
-                  color: AppColors.hazeBlue.withValues(alpha: 0.10),
-                ),
-                _buildActionTile(
-                  icon: Icons.record_voice_over,
-                  title: '语音合成配置',
-                  subtitle: '自定义TTS API地址、Key和音色',
-                  color: AppColors.gentlePurple,
-                  onTap: () => showSpeechConfigDialog(context),
+                  onTap: () => showUnifiedConfigDialog(context),
                 ),
               ],
             ),

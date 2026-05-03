@@ -10,8 +10,7 @@ import '../../services/ai_comfort_service.dart';
 import '../../services/speech_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
-import '../../widgets/llm_config_dialog.dart';
-import '../../widgets/speech_config_dialog.dart';
+import '../../widgets/unified_config_dialog.dart';
 import '../../widgets/speech_params_dialog.dart';
 
 class ComfortPage extends StatefulWidget {
@@ -145,6 +144,71 @@ class _ComfortPageState extends State<ComfortPage> {
         .toList();
     await _storageService.saveConversation(_currentConversation!);
     await _storageService.setActiveConversationId(_currentConversation!.id);
+  }
+
+  PopupMenuEntry<String> _buildMenuSectionHeader(String title) {
+    return PopupMenuItem<String>(
+      enabled: false,
+      height: 28,
+      padding: const EdgeInsets.only(left: 16, right: 16),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textHint.withValues(alpha: 0.45),
+          letterSpacing: 0.8,
+          height: 1,
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildSettingItem({
+    required String value,
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 17, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.2),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 11, color: AppColors.textHint.withValues(alpha: 0.7), height: 1.2),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _maybeGenerateTitle() async {
@@ -425,7 +489,7 @@ class _ComfortPageState extends State<ComfortPage> {
         ? [AppColors.softPink.withValues(alpha: 0.06), AppColors.darkBackground]
         : [AppColors.softPink.withValues(alpha: 0.04), AppColors.background];
 
-    final hasUserMessages = _messages.any((m) => m.isUser);
+    final showWelcomeCard = _messages.isEmpty;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -442,7 +506,7 @@ class _ComfortPageState extends State<ComfortPage> {
           children: [
             _buildEmotionStatusBar(),
             Expanded(
-              child: !hasUserMessages
+              child: showWelcomeCard
                   ? _buildWelcomeCard()
                   : ListView.builder(
                       controller: _scrollController,
@@ -513,7 +577,10 @@ class _ComfortPageState extends State<ComfortPage> {
           ),
           child: PopupMenuButton<String>(
             tooltip: '显示菜单',
-            offset: const Offset(0, 44),
+            offset: const Offset(0, 48),
+            elevation: 12,
+            color: Theme.of(context).colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             padding: const EdgeInsets.all(8),
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             icon: Icon(
@@ -523,80 +590,47 @@ class _ComfortPageState extends State<ComfortPage> {
             ),
             onSelected: _onPopupMenuSelected,
             itemBuilder: (context) => [
-              PopupMenuItem(
+              _buildMenuSectionHeader('对话模式'),
+              _buildSettingItem(
                 value: 'toggle_llm',
-                child: Row(
-                  children: [
-                    Icon(_useLlm ? Icons.cloud_off_outlined : Icons.cloud_outlined, size: 18),
-                    const SizedBox(width: 8),
-                    Text(_useLlm ? '切换到本地模式' : '切换到大模型模式'),
-                  ],
-                ),
+                icon: _useLlm ? Icons.cloud_outlined : Icons.psychology_outlined,
+                color: AppColors.hazeBlue,
+                title: _useLlm ? '大模型模式' : '本地预设模式',
+                subtitle: _useLlm ? '点击切换到本地' : '点击切换到大模型',
               ),
-              PopupMenuItem(
+              _buildSettingItem(
                 value: 'toggle_stream',
-                child: Row(
-                  children: [
-                    Icon(_useStream ? Icons.stream : Icons.text_fields, size: 18),
-                    const SizedBox(width: 8),
-                    Text(_useStream ? '关闭流式（打字机）' : '开启流式（实时）'),
-                  ],
-                ),
+                icon: _useStream ? Icons.bolt : Icons.text_snippet_outlined,
+                color: AppColors.calmGreen,
+                title: _useStream ? '实时流式输出' : '打字机模式',
+                subtitle: _useStream ? '点击切换打字机' : '点击切换流式',
               ),
-              PopupMenuItem(
+              const PopupMenuDivider(height: 1),
+              _buildMenuSectionHeader('语音设置'),
+              _buildSettingItem(
                 value: 'voice',
-                child: Row(
-                  children: [
-                    Icon(
-                      _ttsVoiceType == SpeechConfig.voiceTypeMale
-                          ? Icons.man_outlined
-                          : Icons.woman_outlined,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text('朗读音色: ${SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '未知'}'),
-                  ],
-                ),
+                icon: _ttsVoiceType == SpeechConfig.voiceTypeMale
+                    ? Icons.man_outlined
+                    : Icons.woman_outlined,
+                color: AppColors.gentlePurple,
+                title: '朗读音色',
+                subtitle: SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '选择朗读音色',
               ),
-              const PopupMenuItem(
-                value: 'clear',
-                child: Row(
-                  children: [
-                    Icon(Icons.add_comment_outlined, size: 18),
-                    SizedBox(width: 8),
-                    Text('新建对话'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'config',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings_outlined, size: 18),
-                    SizedBox(width: 8),
-                    Text('大模型配置'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
+              _buildSettingItem(
                 value: 'speech_params',
-                child: Row(
-                  children: [
-                    Icon(Icons.tune, size: 18),
-                    SizedBox(width: 8),
-                    Text('语音参数'),
-                  ],
-                ),
+                icon: Icons.tune,
+                color: AppColors.softOrange,
+                title: '语音参数',
+                subtitle: '语速与音量调节',
               ),
-              const PopupMenuItem(
-                value: 'tts_config',
-                child: Row(
-                  children: [
-                    Icon(Icons.record_voice_over, size: 18),
-                    SizedBox(width: 8),
-                    Text('语音合成配置'),
-                  ],
-                ),
+              const PopupMenuDivider(height: 1),
+              _buildMenuSectionHeader('更多'),
+              _buildSettingItem(
+                value: 'api_config',
+                icon: Icons.api,
+                color: AppColors.hazeBlue,
+                title: 'API 配置',
+                subtitle: '大模型 & 语音合成',
               ),
             ],
           ),
@@ -626,19 +660,15 @@ class _ComfortPageState extends State<ComfortPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-    } else if (value == 'clear') {
-      _typeTimer?.cancel();
-      _streamDisplayTimer?.cancel();
-      _cursorBlinkTimer?.cancel();
-      _newConversation();
     } else if (value == 'voice') {
       _showVoicePicker();
-    } else if (value == 'config') {
-      _showLlmConfigDialog();
+    } else if (value == 'api_config') {
+      showUnifiedConfigDialog(context).then((_) {
+        _llmService.reloadConfig();
+        _speechService.reloadTtsConfig();
+      });
     } else if (value == 'speech_params') {
       showSpeechParamsDialog(context).then((_) => _speechService.reloadTtsConfig());
-    } else if (value == 'tts_config') {
-      showSpeechConfigDialog(context).then((_) => _speechService.reloadTtsConfig());
     }
   }
 
@@ -1397,10 +1427,6 @@ class _ComfortPageState extends State<ComfortPage> {
       await _storageService.setActiveConversationId(null);
     }
     setState(() {});
-  }
-
-  void _showLlmConfigDialog() {
-    showLlmConfigDialog(context);
   }
 
   void _showVoicePicker() {

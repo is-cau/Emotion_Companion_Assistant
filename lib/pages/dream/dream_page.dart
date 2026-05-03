@@ -280,7 +280,13 @@ class _DreamPageState extends State<DreamPage> {
   Widget _buildSliverHeader() {
     return SliverAppBar(
       pinned: true,
-      title: const Text('AI梦境解读'),
+      title: Text(
+        'AI梦境解读',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.hazeBlue,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
       centerTitle: false,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       surfaceTintColor: Colors.transparent,
