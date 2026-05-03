@@ -8,6 +8,7 @@ import '../../app/routes/app_routes.dart';
 import '../../widgets/emotion_radar.dart';
 import '../../widgets/heartbeat_breath_button.dart';
 import '../../widgets/fortune_draw.dart';
+import '../../widgets/fortune_calendar.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onNavigateToComfort;
@@ -25,6 +26,7 @@ class HomePageState extends State<HomePage> {
   String? _fortuneDate;
   FortuneLevel? _fortuneLevel;
   String? _fortuneBlessing;
+  List<String> _checkedDates = [];
 
   @override
   void initState() {
@@ -54,18 +56,26 @@ class HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadFortuneState() async {
+    final dates = await _storageService.getFortuneCheckinDates();
     final date = await _storageService.getFortuneDate();
     final today = '${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}';
+    FortuneLevel? savedLevel;
+    String? savedBlessing;
     if (date == today) {
       final levelIdx = await _storageService.getFortuneLevel();
       final blessing = await _storageService.getFortuneBlessing();
-      if (levelIdx != null && blessing != null && mounted) {
-        setState(() {
-          _fortuneDate = date;
-          _fortuneLevel = FortuneLevel.values[levelIdx];
-          _fortuneBlessing = blessing;
-        });
+      if (levelIdx != null && levelIdx >= 0 && levelIdx < FortuneLevel.values.length && blessing != null) {
+        savedLevel = FortuneLevel.values[levelIdx];
+        savedBlessing = blessing;
       }
+    }
+    if (mounted) {
+      setState(() {
+        _checkedDates = dates;
+        _fortuneDate = date == today ? date : null;
+        _fortuneLevel = savedLevel;
+        _fortuneBlessing = savedBlessing;
+      });
     }
   }
 
@@ -74,10 +84,13 @@ class HomePageState extends State<HomePage> {
     await _storageService.setFortuneDate(date);
     await _storageService.setFortuneLevel(level.index);
     await _storageService.setFortuneBlessing(blessing);
+    await _storageService.addFortuneCheckinDate(date);
+    final dates = await _storageService.getFortuneCheckinDates();
     setState(() {
       _fortuneDate = date;
       _fortuneLevel = level;
       _fortuneBlessing = blessing;
+      _checkedDates = dates;
     });
   }
 
@@ -442,18 +455,18 @@ class HomePageState extends State<HomePage> {
     return GestureDetector(
       onTap: () => _showFortuneDialog(),
       child: Container(
-        width: 32,
-        height: 32,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.warmBeige.withValues(alpha: 0.15),
+          image: DecorationImage(
+            image: AssetImage('assets/icons/icon.png'),
+            fit: BoxFit.cover,
+          ),
           border: Border.all(
-            color: AppColors.warmBeige.withValues(alpha: 0.3),
+            color: AppColors.warmBeige.withValues(alpha: 0.25),
             width: 1,
           ),
-        ),
-        child: const Center(
-          child: Text('🎋', style: TextStyle(fontSize: 16)),
         ),
       ),
     );
@@ -468,8 +481,15 @@ class HomePageState extends State<HomePage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Text('🎋', style: TextStyle(fontSize: 20)),
-            const SizedBox(width: 8),
+            Container(
+              width: 5,
+              height: 20,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                color: AppColors.warmBeige.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(width: 10),
             Text('今日一签',
                 style: TextStyle(
                     fontSize: 16,
@@ -478,12 +498,60 @@ class HomePageState extends State<HomePage> {
         ),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        content: FortuneDraw(
-          savedDate: _fortuneDate,
-          savedLevel: _fortuneLevel,
-          savedBlessing: _fortuneBlessing,
-          onFortuneDrawn: _saveFortune,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FortuneDraw(
+              savedDate: _fortuneDate,
+              savedLevel: _fortuneLevel,
+              savedBlessing: _fortuneBlessing,
+              onFortuneDrawn: _saveFortune,
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showCalendarDialog();
+              },
+              child: Text('查看日历签到 →',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.hazeBlue.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  void _showCalendarDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showFortuneDialog();
+              },
+              child: Icon(Icons.arrow_back_ios, size: 16,
+                color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6)),
+            ),
+            const SizedBox(width: 8),
+            Text('签到日历',
+              style: TextStyle(fontSize: 16, color: Theme.of(ctx).colorScheme.onSurface)),
+          ],
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(16, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        content: FortuneCalendar(checkedDates: _checkedDates),
       ),
     );
   }

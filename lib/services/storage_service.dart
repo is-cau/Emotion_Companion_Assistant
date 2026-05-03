@@ -30,6 +30,7 @@ class StorageService {
   static const String _fortuneDateKey = 'fortune_date';
   static const String _fortuneLevelKey = 'fortune_level';
   static const String _fortuneBlessingKey = 'fortune_blessing';
+  static const String _fortuneCheckinDatesKey = 'fortune_checkin_dates';
 
   Box _settings() => Hive.box(_settingsBox);
   Box<EmotionRecord> _records() => Hive.box<EmotionRecord>(_recordsBox);
@@ -293,5 +294,21 @@ class StorageService {
     await _settings().delete(_fortuneDateKey);
     await _settings().delete(_fortuneLevelKey);
     await _settings().delete(_fortuneBlessingKey);
+  }
+
+  // ===== 抽签签到日期 =====
+
+  Future<List<String>> getFortuneCheckinDates() async {
+    final raw = _settings().get(_fortuneCheckinDatesKey);
+    if (raw == null) return [];
+    return (raw as List).cast<String>();
+  }
+
+  Future<void> addFortuneCheckinDate(String date) async {
+    final dates = await getFortuneCheckinDates();
+    if (!dates.contains(date)) {
+      dates.add(date);
+      await _settings().put(_fortuneCheckinDatesKey, dates);
+    }
   }
 }
