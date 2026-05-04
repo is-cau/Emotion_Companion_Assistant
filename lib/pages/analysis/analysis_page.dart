@@ -331,8 +331,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          color.withValues(alpha: 0.9),
-                          color.withValues(alpha: 0.4),
+                          color.withValues(alpha: 1.0),
+                          color.withValues(alpha: 0.65),
                         ],
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
@@ -351,7 +351,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
               '${(value * 100).toInt()}%',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontSize: 12,
-                    color: color.withValues(alpha: 0.7),
+                    color: color.withValues(alpha: 0.85),
                   ),
               textAlign: TextAlign.right,
             ),
