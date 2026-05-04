@@ -6,7 +6,7 @@ class AppColors {
   static const Color hazeBlue = Color(0xFF9BB0C1);
   static const Color softPink = Color(0xFFD4A5A5);
   static const Color lightCyan = Color(0xFFA8D8D8);
-  static const Color warmBeige = Color(0xFFE8D5C4);
+  static const Color warmBeige = Color(0xFF6D8299);
   static const Color gentlePurple = Color(0xFFB8A9C9);
   static const Color calmGreen = Color(0xFFA8C5A0);
   static const Color softOrange = Color(0xFFE0B89E);
