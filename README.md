@@ -62,42 +62,40 @@
 
 ## 界面预览
 
-> 点击图片可查看大图。截图目录：`assets/screenshots/`
+> 截图存放于 `assets/screenshots/`
 
-### 首页
-情绪概览、每日一签、签到日历、快捷入口，根据时段自动切换问候语。
-
-![首页](assets/screenshots/home.png)
-
-### 情绪树洞
-匿名倾诉，AI 深度情绪分析，白噪音陪伴，密码锁定保护私密空间。
-
-![树洞](assets/screenshots/treehole.png)
-
-### AI 暖心安慰
-流式对话、Markdown 渲染、语音朗读（系统 TTS 或自定义 API），支持多轮对话历史管理。
-
-![安慰](assets/screenshots/comfort.png)
-
-### AI 梦境解读
-输入梦境片段，AI 从主题象征、情绪分析、心理学解读、生活关联、建议引导五个维度深度解析。
-
-![梦境](assets/screenshots/dream.png)
-
-### 情绪分析报告
-7 维度雷达图、各维度进度条、AI 解读文案与舒缓建议、近期情绪趋势。
-
-![分析](assets/screenshots/analysis.png)
-
-### 隐私中心
-密码管理、密保找回、夜间模式、数据清空、大模型与语音合成 API 配置。
-
-![我的](assets/screenshots/privacy.png)
-
-### API 配置
-统一的大模型与语音合成配置界面，支持系统默认 TTS 与自定义 API 双引擎切换，连接测试验证。
-
-![配置](assets/screenshots/config.png)
+<table>
+<tr>
+  <td width="50%"><b>首页</b> — 情绪概览、每日一签、签到日历、快捷入口</td>
+  <td width="50%"><b>情绪树洞</b> — 匿名倾诉、AI 分析、白噪音、密码锁定</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/home.png" width="100%"></td>
+  <td><img src="assets/screenshots/treehole.png" width="100%"></td>
+</tr>
+<tr>
+  <td><b>AI 暖心安慰</b> — 流式对话、语音朗读、对话历史管理</td>
+  <td><b>AI 梦境解读</b> — 五维度深度解析、历史记录</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/comfort.png" width="100%"></td>
+  <td><img src="assets/screenshots/dream.png" width="100%"></td>
+</tr>
+<tr>
+  <td><b>情绪分析报告</b> — 七维雷达图、AI 解读、舒缓建议、趋势</td>
+  <td><b>隐私中心</b> — 密码管理、夜间模式、数据清空</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/analysis.png" width="100%"></td>
+  <td><img src="assets/screenshots/privacy.png" width="100%"></td>
+</tr>
+<tr>
+  <td><b>API 配置</b> — 大模型 + 语音合成双引擎、连接测试</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/config.png" width="50%"></td>
+</tr>
+</table>
 
 ## 技术栈
 
