@@ -71,6 +71,9 @@ class _ComfortPageState extends State<ComfortPage> {
 
   String get _ttsVoiceDisplayName {
     if (_speechService.provider == SpeechConfig.providerSystem) {
+      if (_ttsVoiceType != null && _ttsVoiceType!.contains('|')) {
+        return _ttsVoiceType!.split('|').first;
+      }
       return _ttsVoiceType ?? '系统默认语音';
     }
     return SpeechConfig.voiceTypeLabels[_ttsVoiceType ?? ''] ?? _ttsVoiceType ?? '选择音色';
@@ -1551,7 +1554,10 @@ class _ComfortPageState extends State<ComfortPage> {
 
     showDialog(
       context: context,
+      barrierColor: Colors.black38,
       builder: (ctx) => SimpleDialog(
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -1571,9 +1577,10 @@ class _ComfortPageState extends State<ComfortPage> {
             ? voices.map((v) {
                 final name = v['name'] ?? '';
                 final locale = v['locale'] ?? '';
-                final isSelected = name == _ttsVoiceType;
+                final voiceId = '$name|$locale';
+                final isSelected = voiceId == _ttsVoiceType;
                 return RadioListTile<String>(
-                  value: name,
+                  value: voiceId,
                   groupValue: _ttsVoiceType,
                   title: Text(
                     name,
@@ -1584,14 +1591,14 @@ class _ComfortPageState extends State<ComfortPage> {
                   ),
                   subtitle: locale.isNotEmpty ? Text(locale, style: const TextStyle(fontSize: 11)) : null,
                   activeColor: AppColors.softPink,
-                  onChanged: (value) async {
-                    if (value != null && value != _ttsVoiceType) {
+                  onChanged: (val) async {
+                    if (val != null && val != _ttsVoiceType) {
                       if (isSystem) {
-                        await _speechService.setSystemVoice(value);
+                        await _speechService.setSystemVoice(name);
                       } else {
-                        await _storageService.setTtsVoiceType(value);
+                        await _storageService.setTtsVoiceType(name);
                       }
-                      setState(() => _ttsVoiceType = value);
+                      setState(() => _ttsVoiceType = val);
                       if (mounted) Navigator.pop(ctx);
                     }
                   },

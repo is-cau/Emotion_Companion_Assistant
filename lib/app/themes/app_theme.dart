@@ -6,6 +6,7 @@ class AppTheme {
         useMaterial3: true,
         brightness: Brightness.light,
         scaffoldBackgroundColor: AppColors.background,
+        dialogTheme: const DialogThemeData(surfaceTintColor: Colors.transparent),
         colorScheme: ColorScheme.light(
           primary: AppColors.hazeBlue,
           secondary: AppColors.softPink,
@@ -84,6 +85,7 @@ class AppTheme {
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.darkBackground,
+        dialogTheme: const DialogThemeData(surfaceTintColor: Colors.transparent),
         colorScheme: ColorScheme.dark(
           primary: AppColors.hazeBlue,
           secondary: AppColors.softPink,

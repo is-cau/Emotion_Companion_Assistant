@@ -64,71 +64,118 @@ class SpeechService {
     final savedVoice = await _storageService.getTtsVoiceType();
     _systemVoiceName = savedVoice;
 
-    // 初始化系统 TTS
-    if (!_systemTtsReady) {
-      await _initSystemTts();
-    } else {
+    // 如果引擎已就绪，应用参数；如果未就绪，等待 ensureReady() 触发初始化
+    if (_systemTtsReady) {
       await _applySystemTtsParams();
     }
 
-    developer.log('【TTS配置】provider: $_provider, systemReady: $_systemTtsReady, apiConfigured: ${_apiUrl.isNotEmpty}');
+    developer.log('【TTS配置】provider: $_provider, ready: $_systemTtsReady, apiConfigured: ${_apiUrl.isNotEmpty}');
   }
 
-  /// 初始化系统 TTS 引擎
+  /// 确保系统 TTS 引擎就绪（首帧渲染后调用，内部有平台通道通信）
+  Future<void> ensureReady() async {
+    if (_systemTtsReady) return;
+    if (_provider != SpeechConfig.providerSystem) return;
+    await _initSystemTts();
+  }
+
+  /// 初始化系统 TTS 引擎（每步独立，不因单项失败而整体不可用）
   Future<void> _initSystemTts() async {
+    developer.log('【系统TTS】开始初始化...');
+
+    // 1. 设置 await 模式和事件处理器
     try {
       await _flutterTts.awaitSpeakCompletion(true);
-      await _flutterTts.awaitSynthCompletion(true);
+    } catch (_) {}
 
-      _flutterTts.setStartHandler(() {
-        developer.log('【系统TTS】开始播放');
-      });
+    _flutterTts.setStartHandler(() => developer.log('【系统TTS】开始播放'));
+    _flutterTts.setCompletionHandler(() {
+      developer.log('【系统TTS】播放完成');
+      _onComplete?.call();
+    });
+    _flutterTts.setErrorHandler((m) => developer.log('【系统TTS】错误: $m'));
 
-      _flutterTts.setCompletionHandler(() {
-        developer.log('【系统TTS】播放完成');
-        _onComplete?.call();
-      });
-
-      _flutterTts.setErrorHandler((message) {
-        developer.log('【系统TTS】错误: $message');
-      });
-
-      // 获取可用语音列表
+    // 2. 先设置语言（部分引擎需要语言激活后才能列出语音）
+    for (final code in ['zh-CN', 'zh', 'cmn', 'zho', 'chi']) {
       try {
-        _systemVoices = (await _flutterTts.getVoices).cast<Map<String, String>>();
-        developer.log('【系统TTS】可用语音: ${_systemVoices.length} 个');
-      } catch (_) {
+        await _flutterTts.setLanguage(code);
+        developer.log('【系统TTS】语言: $code');
+        break;
+      } catch (_) {}
+    }
+
+    // 3. 查看可用引擎（仅日志，不强制设置引擎以避免干扰部分国产引擎）
+    try {
+      final engines = await _flutterTts.getEngines;
+      developer.log('【系统TTS】引擎列表: $engines');
+    } catch (_) {}
+
+    // 4. 获取语音（不调用 setEngine，使用系统默认引擎）
+    await _fetchVoices();
+    if (_systemVoices.isEmpty) {
+      // 重试：部分引擎异步加载语音数据
+      await Future.delayed(const Duration(milliseconds: 800));
+      await _fetchVoices();
+    }
+
+    // 5. 设置播放参数
+    await _applySystemTtsParams();
+
+    _systemTtsReady = true;
+    developer.log('【系统TTS】就绪，${_systemVoices.length} 个语音');
+  }
+
+  /// 获取系统语音列表（内部使用）
+  Future<void> _fetchVoices() async {
+    try {
+      final raw = await _flutterTts.getVoices;
+      developer.log('【系统TTS】getVoices 原始类型: ${raw.runtimeType}, 长度: ${raw is List ? raw.length : 'N/A'}');
+
+      if (raw is List && raw.isNotEmpty) {
+        final parsed = <Map<String, String>>[];
+        for (final item in raw) {
+          if (item is Map) {
+            final name = (item['name'] ?? '').toString();
+            final locale = (item['locale'] ?? '').toString();
+            if (name.isNotEmpty) {
+              parsed.add({'name': name, 'locale': locale});
+              developer.log('【系统TTS】语音: $name ($locale)');
+            }
+          }
+        }
+        _systemVoices = parsed;
+        developer.log('【系统TTS】解析完成: ${_systemVoices.length} 个语音');
+      } else {
+        developer.log('【系统TTS】getVoices 返回空或非List');
         _systemVoices = [];
       }
-
-      // 设置语言（优先中文）
-      await _flutterTts.setLanguage('zh-CN');
-      final lang = await _flutterTts.getLanguages;
-      developer.log('【系统TTS】语言: ${lang}');
-
-      await _applySystemTtsParams();
-
-      // 恢复保存的语音
-      if (_systemVoiceName != null && _systemVoiceName!.isNotEmpty) {
-        try {
-          await _flutterTts.setVoice({'name': _systemVoiceName!});
-        } catch (_) {}
-      }
-
-      _systemTtsReady = true;
     } catch (e) {
-      developer.log('【系统TTS】初始化失败: $e');
-      _systemTtsReady = false;
+      developer.log('【系统TTS】获取语音列表异常: $e');
+      _systemVoices = [];
     }
+  }
+
+  /// 刷新系统语音列表（外部调用，例如配置界面点击刷新按钮）
+  Future<void> refreshVoices() async {
+    await _fetchVoices();
   }
 
   Future<void> _applySystemTtsParams() async {
     try {
       await _flutterTts.setSpeechRate(_speed.clamp(0.5, 2.0));
-      await _flutterTts.setVolume(_volume.clamp(0.1, 3.0));
+    } catch (e) {
+      developer.log('【系统TTS】设置语速失败: $e');
+    }
+    try {
+      // flutter_tts 音量范围 0.0-1.0（Android/iOS原生限制）
+      await _flutterTts.setVolume(_volume.clamp(0.0, 1.0));
+    } catch (e) {
+      developer.log('【系统TTS】设置音量失败: $e');
+    }
+    try {
       await _flutterTts.setPitch(_pitch.clamp(0.5, 2.0));
     } catch (e) {
-      developer.log('【系统TTS】参数设置失败: $e');
+      developer.log('【系统TTS】设置音调失败: $e');
     }
   }
 

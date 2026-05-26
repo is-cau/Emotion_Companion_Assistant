@@ -160,7 +160,8 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    final dialog = AlertDialog(
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       titlePadding: EdgeInsets.zero,
@@ -275,6 +276,22 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
         ),
       ),
     );
+
+    if (widget.isFirstLaunch) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (!didPop) {
+            await _markBothSubmitted();
+            await widget.llmService.reloadConfig();
+            await widget.speechService.reloadTtsConfig();
+            if (mounted) Navigator.of(context).pop();
+          }
+        },
+        child: dialog,
+      );
+    }
+    return dialog;
   }
 
   // ============================================================
@@ -477,10 +494,32 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
             ],
           ),
         ),
-        if (_systemVoices.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _buildFieldLabel('系统语音选择'),
-          const SizedBox(height: 8),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const Expanded(
+              child: Text('系统语音选择', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            ),
+            TextButton.icon(
+              onPressed: () async {
+                await widget.speechService.refreshVoices();
+                if (mounted) setState(() => _systemVoices = widget.speechService.systemVoices);
+              },
+              icon: const Icon(Icons.refresh, size: 14),
+              label: const Text('刷新', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_systemVoices.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              '未检测到系统语音，点击「刷新」重试\n（Android 需安装语音引擎数据，设置 → 语言和输入 → 文字转语音）',
+              style: TextStyle(fontSize: 12, color: AppColors.textHint.withValues(alpha: 0.6), height: 1.5),
+            ),
+          )
+        else
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
@@ -496,7 +535,8 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
                 final voice = _systemVoices[index];
                 final name = voice['name'] ?? '';
                 final locale = voice['locale'] ?? '';
-                final isSelected = _selectedSystemVoice == name;
+                final voiceId = '$name|$locale';
+                final isSelected = _selectedSystemVoice == voiceId;
                 return ListTile(
                   dense: true,
                   selected: isSelected,
@@ -505,12 +545,11 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
                   title: Text(name, style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
                   subtitle: locale.isNotEmpty ? Text(locale, style: const TextStyle(fontSize: 11)) : null,
                   trailing: isSelected ? const Icon(Icons.check, size: 18, color: AppColors.calmGreen) : null,
-                  onTap: () => setState(() => _selectedSystemVoice = name),
+                  onTap: () => setState(() => _selectedSystemVoice = voiceId),
                 );
               },
             ),
           ),
-        ],
         const SizedBox(height: 18),
         const Divider(height: 1),
         const SizedBox(height: 14),
@@ -816,12 +855,17 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await widget.storageService.setLlmModel(_llmModelCtrl.text.trim());
     await widget.storageService.setLlmConfigSubmitted(true);
     await widget.llmService.reloadConfig();
-    if (widget.isFirstLaunch) _tabController.animateTo(1);
+    if (widget.isFirstLaunch) {
+      // 确保 TTS 也标记已提交，然后关闭对话框
+      await widget.storageService.setTtsConfigSubmitted(true);
+      await widget.speechService.reloadTtsConfig();
+      if (mounted) Navigator.of(context).pop();
+    }
   }
 
   void _resetLlmToDefault() async {
     if (widget.isFirstLaunch) {
-      // 跳过：标记为已提交（空配置），不保存任何值，切换到语音合成 Tab
+      // 跳过 LLM：标记为已提交，转到 TTS 标签页
       await widget.storageService.setLlmConfigSubmitted(true);
       await widget.llmService.reloadConfig();
       _tabController.animateTo(1);
@@ -871,22 +915,34 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     if (context.mounted) _showTestResult(success, message);
   }
 
+  // --- 首次启动时标记双方已提交 ---
+  Future<void> _markBothSubmitted() async {
+    await widget.storageService.setLlmConfigSubmitted(true);
+    await widget.storageService.setTtsConfigSubmitted(true);
+  }
+
   // --- 系统 TTS 保存/跳过 ---
 
   void _saveTtsSystem() async {
     await widget.storageService.setTtsProvider(_ttsProvider);
     if (_selectedSystemVoice != null) {
-      await widget.speechService.setSystemVoice(_selectedSystemVoice!);
+      // 从 voiceId (name|locale) 中提取 name 传给 TTS 引擎
+      final voiceName = _selectedSystemVoice!.contains('|')
+          ? _selectedSystemVoice!.split('|').first
+          : _selectedSystemVoice!;
+      await widget.speechService.setSystemVoice(voiceName);
     }
-    await widget.storageService.setTtsConfigSubmitted(true);
+    await _markBothSubmitted();
     await widget.speechService.reloadTtsConfig();
-    if (widget.isFirstLaunch && mounted) Navigator.of(context).pop();
+    await widget.llmService.reloadConfig();
+    if (mounted) Navigator.of(context).pop();
   }
 
   void _skipTtsSystem() async {
     await widget.storageService.setTtsProvider(_ttsProvider);
-    await widget.storageService.setTtsConfigSubmitted(true);
+    await _markBothSubmitted();
     await widget.speechService.reloadTtsConfig();
+    await widget.llmService.reloadConfig();
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -897,22 +953,22 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await widget.storageService.setTtsBaseUrl(_ttsUrlCtrl.text.trim());
     await widget.storageService.setTtsApiKey(_ttsKeyCtrl.text.trim());
     await widget.storageService.setTtsModel(_ttsModelCtrl.text.trim());
-    await widget.storageService.setTtsConfigSubmitted(true);
+    await _markBothSubmitted();
     await widget.speechService.reloadTtsConfig();
-    if (widget.isFirstLaunch && mounted) Navigator.of(context).pop();
+    await widget.llmService.reloadConfig();
+    if (mounted) Navigator.of(context).pop();
   }
 
   void _skipTtsApi() async {
     if (widget.isFirstLaunch) {
-      // 跳过 API 配置：切换回系统默认，关闭对话框
       await widget.storageService.setTtsProvider(SpeechConfig.providerSystem);
-      await widget.storageService.setTtsConfigSubmitted(true);
+      await _markBothSubmitted();
       await widget.speechService.reloadTtsConfig();
+      await widget.llmService.reloadConfig();
       setState(() => _ttsProvider = SpeechConfig.providerSystem);
       if (mounted) Navigator.of(context).pop();
       return;
     }
-    // 非首次启动：清除 API 配置，恢复系统默认
     await widget.storageService.clearTtsConfig();
     await widget.storageService.setTtsProvider(SpeechConfig.providerSystem);
     await widget.speechService.reloadTtsConfig();

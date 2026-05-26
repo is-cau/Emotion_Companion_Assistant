@@ -89,28 +89,28 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _checkFirstLaunchConfig() async {
-    // 等待一帧确保 context 可用
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
     final storageService = StorageService();
     final llmSubmitted = await storageService.isLlmConfigSubmitted();
 
-    // TTS 默认使用系统引擎，无需配置即可使用
-    // 仅 LLM 需要用户配置
     if (!llmSubmitted) {
       if (!mounted) return;
       await showUnifiedConfigDialog(context, isFirstLaunch: true);
-      // 用户关闭对话框后重新加载配置
       await LlmService().reloadConfig();
       await SpeechService().reloadTtsConfig();
     } else {
-      // 确保 TTS 配置也被标记为已提交（系统默认模式）
       final ttsSubmitted = await storageService.isTtsConfigSubmitted();
       if (!ttsSubmitted) {
         await storageService.setTtsConfigSubmitted(true);
       }
     }
+
+    // 首帧已渲染，安全调用平台通道初始化 TTS 引擎
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SpeechService().ensureReady();
+    });
   }
 
   void _onTabChanged(int index) {
