@@ -856,10 +856,20 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await widget.storageService.setLlmConfigSubmitted(true);
     await widget.llmService.reloadConfig();
     if (widget.isFirstLaunch) {
-      // 确保 TTS 也标记已提交，然后关闭对话框
       await widget.storageService.setTtsConfigSubmitted(true);
       await widget.speechService.reloadTtsConfig();
       if (mounted) Navigator.of(context).pop();
+    } else if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('大模型配置已保存'),
+          backgroundColor: AppColors.calmGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -926,7 +936,6 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
   void _saveTtsSystem() async {
     await widget.storageService.setTtsProvider(_ttsProvider);
     if (_selectedSystemVoice != null) {
-      // 从 voiceId (name|locale) 中提取 name 传给 TTS 引擎
       final voiceName = _selectedSystemVoice!.contains('|')
           ? _selectedSystemVoice!.split('|').first
           : _selectedSystemVoice!;
@@ -935,7 +944,20 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await _markBothSubmitted();
     await widget.speechService.reloadTtsConfig();
     await widget.llmService.reloadConfig();
-    if (mounted) Navigator.of(context).pop();
+    if (widget.isFirstLaunch) {
+      if (mounted) Navigator.of(context).pop();
+    } else if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('语音配置已保存'),
+          backgroundColor: AppColors.calmGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _skipTtsSystem() async {
@@ -956,7 +978,20 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await _markBothSubmitted();
     await widget.speechService.reloadTtsConfig();
     await widget.llmService.reloadConfig();
-    if (mounted) Navigator.of(context).pop();
+    if (widget.isFirstLaunch) {
+      if (mounted) Navigator.of(context).pop();
+    } else if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('语音配置已保存'),
+          backgroundColor: AppColors.calmGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _skipTtsApi() async {
