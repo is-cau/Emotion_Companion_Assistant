@@ -22,11 +22,15 @@ class StorageService {
   static const String _ttsBaseUrlKey = 'tts_base_url';
   static const String _ttsApiKeyKey = 'tts_api_key';
   static const String _ttsModelKey = 'tts_model';
+  static const String _ttsProviderKey = 'tts_provider';
   static const String _ttsSpeedKey = 'tts_speed';
   static const String _ttsVolumeKey = 'tts_volume';
+  static const String _ttsPitchKey = 'tts_pitch';
   static const String _pendingDreamTextKey = 'pending_dream_text';
   static const String _pendingDreamIdKey = 'pending_dream_id';
   static const String _darkModeKey = 'dark_mode';
+  static const String _llmConfigSubmittedKey = 'llm_config_submitted';
+  static const String _ttsConfigSubmittedKey = 'tts_config_submitted';
   static const String _fortuneDateKey = 'fortune_date';
   static const String _fortuneLevelKey = 'fortune_level';
   static const String _fortuneBlessingKey = 'fortune_blessing';
@@ -139,13 +143,25 @@ class StorageService {
 
   // ===== TTS 音色 =====
 
-  Future<String> getTtsVoiceType() async =>
-      _settings().get(_ttsVoiceTypeKey, defaultValue: SpeechConfig.defaultVoiceType);
+  Future<String?> getTtsVoiceType() async => _settings().get(_ttsVoiceTypeKey);
 
   Future<void> setTtsVoiceType(String voiceType) async =>
       _settings().put(_ttsVoiceTypeKey, voiceType);
 
-  // ===== TTS 语速/音量 =====
+  // ===== TTS 提供者 =====
+
+  Future<String> getTtsProvider() async =>
+      _settings().get(_ttsProviderKey, defaultValue: SpeechConfig.providerSystem);
+
+  Future<void> setTtsProvider(String? provider) async {
+    if (provider == null || provider.isEmpty) {
+      await _settings().delete(_ttsProviderKey);
+    } else {
+      await _settings().put(_ttsProviderKey, provider);
+    }
+  }
+
+  // ===== TTS 语速/音量/音调 =====
 
   Future<double?> getTtsSpeed() async => _settings().get(_ttsSpeedKey);
 
@@ -164,6 +180,16 @@ class StorageService {
       await _settings().delete(_ttsVolumeKey);
     } else {
       await _settings().put(_ttsVolumeKey, volume);
+    }
+  }
+
+  Future<double?> getTtsPitch() async => _settings().get(_ttsPitchKey);
+
+  Future<void> setTtsPitch(double? pitch) async {
+    if (pitch == null) {
+      await _settings().delete(_ttsPitchKey);
+    } else {
+      await _settings().put(_ttsPitchKey, pitch);
     }
   }
 
@@ -199,6 +225,13 @@ class StorageService {
     final key = await getLlmApiKey();
     return url != null && url.isNotEmpty && key != null && key.isNotEmpty;
   }
+
+  /// 用户是否已提交过 LLM 配置（含跳过）
+  Future<bool> isLlmConfigSubmitted() async =>
+      _settings().get(_llmConfigSubmittedKey, defaultValue: false);
+
+  Future<void> setLlmConfigSubmitted(bool value) async =>
+      _settings().put(_llmConfigSubmittedKey, value);
 
   Future<void> clearLlmConfig() async {
     await _settings().delete(_llmBaseUrlKey);
@@ -273,6 +306,13 @@ class StorageService {
     final key = await getTtsApiKey();
     return url != null && url.isNotEmpty && key != null && key.isNotEmpty;
   }
+
+  /// 用户是否已提交过 TTS 配置（含跳过）
+  Future<bool> isTtsConfigSubmitted() async =>
+      _settings().get(_ttsConfigSubmittedKey, defaultValue: false);
+
+  Future<void> setTtsConfigSubmitted(bool value) async =>
+      _settings().put(_ttsConfigSubmittedKey, value);
 
   Future<void> clearTtsConfig() async {
     await _settings().delete(_ttsBaseUrlKey);

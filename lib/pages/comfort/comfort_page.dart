@@ -45,7 +45,7 @@ class _ComfortPageState extends State<ComfortPage> {
   final SpeechService _speechService = SpeechService();
   final AudioPlayer _ttsPlayer = AudioPlayer();
   String? _playingMessageIndex;
-  String _ttsVoiceType = SpeechConfig.defaultVoiceType;
+  String? _ttsVoiceType;
 
   // 对话管理
   List<Conversation> _conversations = [];
@@ -58,11 +58,29 @@ class _ComfortPageState extends State<ComfortPage> {
     _speechService.reloadTtsConfig();
     _loadConversations();
     _loadVoicePreference();
+    // 如果 LLM 未配置，强制使用本地模式
+    if (!_llmService.isConfigured()) {
+      _useLlm = false;
+    }
   }
 
   Future<void> _loadVoicePreference() async {
     final voice = await _storageService.getTtsVoiceType();
     if (mounted) setState(() => _ttsVoiceType = voice);
+  }
+
+  String get _ttsVoiceDisplayName {
+    if (_speechService.provider == SpeechConfig.providerSystem) {
+      return _ttsVoiceType ?? '系统默认语音';
+    }
+    return SpeechConfig.voiceTypeLabels[_ttsVoiceType ?? ''] ?? _ttsVoiceType ?? '选择音色';
+  }
+
+  List<Map<String, String>> get _availableVoices {
+    if (_speechService.provider == SpeechConfig.providerSystem) {
+      return _speechService.systemVoices;
+    }
+    return SpeechConfig.voiceTypeLabels.entries.map((e) => {'name': e.key, 'locale': e.value}).toList();
   }
 
   Future<void> _loadConversations() async {
@@ -435,15 +453,17 @@ class _ComfortPageState extends State<ComfortPage> {
     });
   }
 
-  /// 朗读AI消息 (豆包TTS, 截取前300字)
+  /// 朗读AI消息
   Future<void> _speakMessage(int index, String text) async {
     if (_playingMessageIndex == '$index') {
+      await _speechService.stop();
       await _ttsPlayer.stop();
       setState(() => _playingMessageIndex = null);
       return;
     }
 
     await _ttsPlayer.stop();
+    await _speechService.stop();
 
     // 去除 Markdown 符号
     var plainText = text
@@ -457,23 +477,46 @@ class _ComfortPageState extends State<ComfortPage> {
 
     setState(() => _playingMessageIndex = '$index');
 
-    final audioPath = await _speechService.textToSpeech(plainText, voiceType: _ttsVoiceType);
-    if (audioPath != null && mounted) {
-      await _ttsPlayer.play(DeviceFileSource(audioPath));
-      _ttsPlayer.onPlayerComplete.listen((_) {
-        if (mounted) setState(() => _playingMessageIndex = null);
-      });
-    } else {
+    if (_speechService.provider == SpeechConfig.providerSystem) {
+      // 系统 TTS：直接朗读
+      final success = await _speechService.speak(plainText);
       if (mounted) {
-        setState(() => _playingMessageIndex = null);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('语音合成失败，请检查API配置'),
-            backgroundColor: AppColors.softOrange,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+        if (!success) {
+          setState(() => _playingMessageIndex = null);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('系统语音合成失败'),
+              backgroundColor: AppColors.softOrange,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+        // 系统 TTS 通过回调通知完成
+        _speechService.setOnComplete(() {
+          if (mounted) setState(() => _playingMessageIndex = null);
+        });
+      }
+    } else {
+      // API TTS：合成到文件再播放
+      final audioPath = await _speechService.synthesizeToFile(plainText);
+      if (audioPath != null && mounted) {
+        await _ttsPlayer.play(DeviceFileSource(audioPath));
+        _ttsPlayer.onPlayerComplete.listen((_) {
+          if (mounted) setState(() => _playingMessageIndex = null);
+        });
+      } else {
+        if (mounted) {
+          setState(() => _playingMessageIndex = null);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('语音合成失败，请检查API配置'),
+              backgroundColor: AppColors.softOrange,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
       }
     }
   }
@@ -609,12 +652,10 @@ class _ComfortPageState extends State<ComfortPage> {
               _buildMenuSectionHeader('语音设置'),
               _buildSettingItem(
                 value: 'voice',
-                icon: _ttsVoiceType == SpeechConfig.voiceTypeMale
-                    ? Icons.man_outlined
-                    : Icons.woman_outlined,
+                icon: Icons.record_voice_over,
                 color: AppColors.gentlePurple,
                 title: '朗读音色',
-                subtitle: SpeechConfig.voiceTypeLabels[_ttsVoiceType] ?? '选择朗读音色',
+                subtitle: _ttsVoiceDisplayName,
               ),
               _buildSettingItem(
                 value: 'speech_params',
@@ -641,6 +682,31 @@ class _ComfortPageState extends State<ComfortPage> {
 
   void _onPopupMenuSelected(String value) {
     if (value == 'toggle_llm') {
+      if (!_useLlm && !_llmService.isConfigured()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('请先配置大模型 API 后再切换'),
+            backgroundColor: AppColors.softOrange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            action: SnackBarAction(
+              label: '去配置',
+              textColor: Colors.white,
+              onPressed: () {
+                showUnifiedConfigDialog(context).then((_) async {
+                  _llmService.reloadConfig();
+                  _speechService.reloadTtsConfig();
+                  await _loadVoicePreference();
+                  if (_llmService.isConfigured()) {
+                    setState(() => _useLlm = true);
+                  }
+                });
+              },
+            ),
+          ),
+        );
+        return;
+      }
       setState(() => _useLlm = !_useLlm);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -663,9 +729,15 @@ class _ComfortPageState extends State<ComfortPage> {
     } else if (value == 'voice') {
       _showVoicePicker();
     } else if (value == 'api_config') {
-      showUnifiedConfigDialog(context).then((_) {
+      showUnifiedConfigDialog(context).then((_) async {
         _llmService.reloadConfig();
         _speechService.reloadTtsConfig();
+        await _loadVoicePreference();
+        setState(() {
+          if (!_llmService.isConfigured()) {
+            _useLlm = false;
+          }
+        });
       });
     } else if (value == 'speech_params') {
       showSpeechParamsDialog(context).then((_) => _speechService.reloadTtsConfig());
@@ -695,49 +767,93 @@ class _ComfortPageState extends State<ComfortPage> {
   Widget _buildEmotionStatusBar() {
     final hasEmotion = _currentEmotion != '平静';
     final color = hasEmotion ? AppColors.softPink : AppColors.hazeBlue;
+    final llmConfigured = _llmService.isConfigured();
+    final showConfigBanner = !llmConfigured;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border(
-          left: BorderSide(color: color.withValues(alpha: 0.35), width: 3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              hasEmotion ? Icons.favorite_outline : Icons.cloud_outlined,
-              size: 16,
-              color: color,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border(
+              left: BorderSide(color: color.withValues(alpha: 0.35), width: 3),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              hasEmotion
-                  ? '我感受到你现在有些$_currentEmotion'
-                  : (_useLlm
-                      ? '大模型模式${_useStream ? " · 实时流式" : " · 打字机"} · 随时倾诉'
-                      : '本地模式 · 打字机 · 随时倾诉'),
-              style: TextStyle(
-                fontSize: 13,
-                color: color,
-                height: 1.4,
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  hasEmotion ? Icons.favorite_outline : Icons.cloud_outlined,
+                  size: 16,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  hasEmotion
+                      ? '我感受到你现在有些$_currentEmotion'
+                      : (_useLlm
+                          ? '大模型模式${_useStream ? " · 实时流式" : " · 打字机"} · 随时倾诉'
+                          : '本地模式 · 打字机 · 随时倾诉'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: color,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showConfigBanner && !hasEmotion)
+          GestureDetector(
+            onTap: () {
+              showUnifiedConfigDialog(context).then((_) async {
+                _llmService.reloadConfig();
+                _speechService.reloadTtsConfig();
+                await _loadVoicePreference();
+                if (_llmService.isConfigured()) {
+                  setState(() => _useLlm = true);
+                } else {
+                  setState(() => _useLlm = false);
+                }
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.softOrange.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.softOrange.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.settings_outlined, size: 14, color: AppColors.softOrange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '请配置大模型服务以使用 AI 对话功能',
+                      style: TextStyle(fontSize: 12, color: AppColors.softOrange.withValues(alpha: 0.8)),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 16, color: AppColors.softOrange.withValues(alpha: 0.5)),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -1430,10 +1546,9 @@ class _ComfortPageState extends State<ComfortPage> {
   }
 
   void _showVoicePicker() {
-    final voices = [
-      SpeechConfig.voiceTypeFemale,
-      SpeechConfig.voiceTypeMale,
-    ];
+    final isSystem = _speechService.provider == SpeechConfig.providerSystem;
+    final voices = _availableVoices;
+
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -1449,31 +1564,54 @@ class _ComfortPageState extends State<ComfortPage> {
               child: const Icon(Icons.record_voice_over, size: 18, color: AppColors.softPink),
             ),
             const SizedBox(width: 8),
-            const Text('选择朗读音色'),
+            Text(isSystem ? '选择系统语音' : '选择朗读音色'),
           ],
         ),
-        children: voices.map((v) {
-          final isSelected = v == _ttsVoiceType;
-          return RadioListTile<String>(
-            value: v,
-            groupValue: _ttsVoiceType,
-            title: Text(
-              SpeechConfig.voiceTypeLabels[v] ?? v,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? AppColors.softPink : null,
-              ),
-            ),
-            activeColor: AppColors.softPink,
-            onChanged: (value) async {
-              if (value != null && value != _ttsVoiceType) {
-                await _storageService.setTtsVoiceType(value);
-                setState(() => _ttsVoiceType = value);
-                if (mounted) Navigator.pop(ctx);
-              }
-            },
-          );
-        }).toList(),
+        children: voices.isNotEmpty
+            ? voices.map((v) {
+                final name = v['name'] ?? '';
+                final locale = v['locale'] ?? '';
+                final isSelected = name == _ttsVoiceType;
+                return RadioListTile<String>(
+                  value: name,
+                  groupValue: _ttsVoiceType,
+                  title: Text(
+                    name,
+                    style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      color: isSelected ? AppColors.softPink : null,
+                    ),
+                  ),
+                  subtitle: locale.isNotEmpty ? Text(locale, style: const TextStyle(fontSize: 11)) : null,
+                  activeColor: AppColors.softPink,
+                  onChanged: (value) async {
+                    if (value != null && value != _ttsVoiceType) {
+                      if (isSystem) {
+                        await _speechService.setSystemVoice(value);
+                      } else {
+                        await _storageService.setTtsVoiceType(value);
+                      }
+                      setState(() => _ttsVoiceType = value);
+                      if (mounted) Navigator.pop(ctx);
+                    }
+                  },
+                );
+              }).toList()
+            : [
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(Icons.info_outline, size: 32, color: AppColors.textHint.withValues(alpha: 0.3)),
+                      const SizedBox(height: 12),
+                      Text(
+                        isSystem ? '未检测到系统语音' : '无可用音色',
+                        style: TextStyle(color: AppColors.textHint.withValues(alpha: 0.5)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
       ),
     );
   }

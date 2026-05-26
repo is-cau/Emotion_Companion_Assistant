@@ -8,6 +8,7 @@ import '../../app/themes/app_colors.dart';
 import '../../models/emotion_models.dart';
 import '../../services/llm_service.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/unified_config_dialog.dart';
 
 class DreamPage extends StatefulWidget {
   const DreamPage({super.key});
@@ -295,6 +296,12 @@ class _DreamPageState extends State<DreamPage> {
   }
 
   Widget _buildInputArea() {
+    final llmConfigured = _llmService.isConfigured();
+
+    if (!llmConfigured) {
+      return _buildConfigPromptCard();
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.dreamyLavender.withOpacity(0.06),
@@ -363,6 +370,61 @@ class _DreamPageState extends State<DreamPage> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfigPromptCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.dreamyLavender.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.dreamyLavender.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.softOrange.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.settings_outlined, size: 32, color: AppColors.softOrange),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '请先配置大模型 API',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppColors.softOrange,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '梦境解读需要大模型服务支持，请先配置 API 后再使用',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              showUnifiedConfigDialog(context).then((_) {
+                _llmService.reloadConfig();
+                setState(() {});
+              });
+            },
+            icon: const Icon(Icons.api, size: 18),
+            label: const Text('去配置'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.softOrange,
+              side: const BorderSide(color: AppColors.softOrange),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],

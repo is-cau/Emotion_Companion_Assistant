@@ -8,6 +8,7 @@ import '../../services/llm_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
 import '../../app/routes/app_routes.dart';
+import '../../widgets/unified_config_dialog.dart';
 
 class TreeholePage extends StatefulWidget {
   const TreeholePage({super.key});
@@ -65,82 +66,116 @@ class TreeholePageState extends State<TreeholePage> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    // 1. 先生成占位记录（"分析中..."），立即保存并刷新列表
-    final pendingId = DateTime.now().microsecondsSinceEpoch.toString();
-    final pendingRecord = EmotionRecord(
-      id: pendingId,
-      content: text,
-      dominantEmotion: '分析中...',
-      createdAt: DateTime.now(),
-    );
-    await _storageService.saveRecord(pendingRecord);
-    _textController.clear();
-    await _loadRecords(); // 立即刷新，显示"分析中..."状态
+    final llmService = LlmService();
+    final useLlm = llmService.isConfigured();
 
-    // 2. 显示加载弹窗（带X关闭按钮，可取消但后台继续分析）
-    bool dialogCancelled = false;
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('AI情绪分析', style: TextStyle(fontSize: 16)),
-              GestureDetector(
-                onTap: () {
-                  dialogCancelled = true;
-                  Navigator.of(ctx).pop();
-                },
-                child: Icon(Icons.close, size: 20, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3)),
-              ),
-            ],
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
-          content: const SizedBox(
-            height: 100,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+    // 1. 生成记录
+    final recordId = DateTime.now().microsecondsSinceEpoch.toString();
+    final now = DateTime.now();
+
+    if (useLlm) {
+      // LLM 模式：先创建占位记录，显示加载弹窗，后台分析
+      final pendingRecord = EmotionRecord(
+        id: recordId,
+        content: text,
+        dominantEmotion: '分析中...',
+        createdAt: now,
+      );
+      await _storageService.saveRecord(pendingRecord);
+      _textController.clear();
+      await _loadRecords();
+
+      // 显示加载弹窗
+      bool dialogCancelled = false;
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 20),
-                Text('正在生成详细情绪报告中……', style: TextStyle(fontSize: 15)),
+                const Text('AI情绪分析', style: TextStyle(fontSize: 16)),
+                GestureDetector(
+                  onTap: () {
+                    dialogCancelled = true;
+                    Navigator.of(ctx).pop();
+                  },
+                  child: Icon(Icons.close, size: 20, color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.3)),
+                ),
               ],
             ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+            content: const SizedBox(
+              height: 100,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text('正在生成详细情绪报告中……', style: TextStyle(fontSize: 15)),
+                ],
+              ),
+            ),
           ),
-        ),
-      );
-    }
+        );
+      }
 
-    // 3. 调用大模型深度分析（后台运行，即使用户关弹窗也不中断）
-    final llmService = LlmService();
-    final llmResult = await llmService.analyzeEmotion(text);
+      final llmResult = await llmService.analyzeEmotion(text);
 
-    // 4. 构建最终记录：AI成功用AI结果，失败用本地兜底
-    final EmotionRecord finalRecord;
-    if (llmResult != null) {
-      finalRecord = EmotionRecord(
-        id: pendingId,
-        content: text,
-        sadness: (llmResult['sadness'] ?? 0.0).toDouble(),
-        anxiety: (llmResult['anxiety'] ?? 0.0).toDouble(),
-        anger: (llmResult['anger'] ?? 0.0).toDouble(),
-        loneliness: (llmResult['loneliness'] ?? 0.0).toDouble(),
-        happiness: (llmResult['happiness'] ?? 0.0).toDouble(),
-        calmness: (llmResult['calmness'] ?? 0.0).toDouble(),
-        suppression: (llmResult['suppression'] ?? 0.0).toDouble(),
-        dominantEmotion: llmResult['dominantEmotion'] ?? '平静',
-        createdAt: pendingRecord.createdAt,
-        interpretation: llmResult['interpretation'] ?? '',
-        suggestions: (llmResult['suggestions'] as List<dynamic>?)?.cast<String>() ?? [],
-      );
+      // 构建最终记录：AI成功用AI结果，失败用本地兜底
+      final EmotionRecord finalRecord;
+      if (llmResult != null) {
+        finalRecord = EmotionRecord(
+          id: recordId,
+          content: text,
+          sadness: (llmResult['sadness'] ?? 0.0).toDouble(),
+          anxiety: (llmResult['anxiety'] ?? 0.0).toDouble(),
+          anger: (llmResult['anger'] ?? 0.0).toDouble(),
+          loneliness: (llmResult['loneliness'] ?? 0.0).toDouble(),
+          happiness: (llmResult['happiness'] ?? 0.0).toDouble(),
+          calmness: (llmResult['calmness'] ?? 0.0).toDouble(),
+          suppression: (llmResult['suppression'] ?? 0.0).toDouble(),
+          dominantEmotion: llmResult['dominantEmotion'] ?? '平静',
+          createdAt: pendingRecord.createdAt,
+          interpretation: llmResult['interpretation'] ?? '',
+          suggestions: (llmResult['suggestions'] as List<dynamic>?)?.cast<String>() ?? [],
+        );
+      } else {
+        final localRecord = _emotionService.analyze(text);
+        finalRecord = EmotionRecord(
+          id: recordId,
+          content: text,
+          sadness: localRecord.sadness,
+          anxiety: localRecord.anxiety,
+          anger: localRecord.anger,
+          loneliness: localRecord.loneliness,
+          happiness: localRecord.happiness,
+          calmness: localRecord.calmness,
+          suppression: localRecord.suppression,
+          dominantEmotion: localRecord.dominantEmotion,
+          createdAt: pendingRecord.createdAt,
+        );
+      }
+
+      // 用最终结果替换占位记录，刷新列表
+      await _storageService.saveRecord(finalRecord);
+      await _loadRecords();
+
+      if (dialogCancelled) {
+        // 用户已关弹窗 → 结果已静默更新到列表
+      } else {
+        if (mounted) Navigator.of(context).pop();
+        if (mounted) {
+          Get.toNamed(AppRoutes.analysis, arguments: {'recordId': finalRecord.id});
+        }
+      }
     } else {
-      // AI失败，用本地关键词分析兜底
+      // 本地模式：直接分析，无需弹窗
       final localRecord = _emotionService.analyze(text);
-      finalRecord = EmotionRecord(
-        id: pendingId,
+      final finalRecord = EmotionRecord(
+        id: recordId,
         content: text,
         sadness: localRecord.sadness,
         anxiety: localRecord.anxiety,
@@ -150,21 +185,29 @@ class TreeholePageState extends State<TreeholePage> {
         calmness: localRecord.calmness,
         suppression: localRecord.suppression,
         dominantEmotion: localRecord.dominantEmotion,
-        createdAt: pendingRecord.createdAt,
+        createdAt: now,
       );
-    }
+      await _storageService.saveRecord(finalRecord);
+      _textController.clear();
+      await _loadRecords();
 
-    // 5. 用最终结果替换占位记录，刷新列表
-    await _storageService.saveRecord(finalRecord);
-    await _loadRecords();
-
-    if (dialogCancelled) {
-      // 用户已关弹窗 → 结果已静默更新到列表
-    } else {
-      // 弹窗仍在 → 关闭弹窗并跳转分析页
-      if (mounted) Navigator.of(context).pop();
       if (mounted) {
-        Get.toNamed(AppRoutes.analysis, arguments: {'recordId': finalRecord.id});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('已使用本地分析，配置大模型 API 可获得 AI 深度分析'),
+            backgroundColor: AppColors.hazeBlue,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: '去配置',
+              textColor: Colors.white,
+              onPressed: () {
+                showUnifiedConfigDialog(context).then((_) => _loadRecords());
+              },
+            ),
+          ),
+        );
       }
     }
   }

@@ -4,7 +4,7 @@ import '../services/llm_service.dart';
 import '../services/speech_service.dart';
 import '../services/storage_service.dart';
 
-Future<void> showUnifiedConfigDialog(BuildContext context) async {
+Future<void> showUnifiedConfigDialog(BuildContext context, {bool isFirstLaunch = false}) async {
   final llmService = LlmService();
   final speechService = SpeechService();
   final storageService = StorageService();
@@ -26,6 +26,7 @@ Future<void> showUnifiedConfigDialog(BuildContext context) async {
   if (!context.mounted) return;
   await showDialog(
     context: context,
+    barrierDismissible: !isFirstLaunch,
     builder: (ctx) => _UnifiedConfigDialog(
       llmService: llmService,
       speechService: speechService,
@@ -38,6 +39,7 @@ Future<void> showUnifiedConfigDialog(BuildContext context) async {
       initialTtsKey: userTtsKey ?? '',
       initialTtsModel: userTtsModel ?? '',
       hasTtsConfig: hasTtsConfig,
+      isFirstLaunch: isFirstLaunch,
     ),
   );
 }
@@ -54,6 +56,7 @@ class _UnifiedConfigDialog extends StatefulWidget {
   final String initialTtsKey;
   final String initialTtsModel;
   final bool hasTtsConfig;
+  final bool isFirstLaunch;
 
   const _UnifiedConfigDialog({
     required this.llmService,
@@ -67,6 +70,7 @@ class _UnifiedConfigDialog extends StatefulWidget {
     required this.initialTtsKey,
     required this.initialTtsModel,
     required this.hasTtsConfig,
+    this.isFirstLaunch = false,
   });
 
   @override
@@ -94,6 +98,9 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
   bool _ttsTesting = false;
   bool _ttsTestPassed = false;
   String? _ttsError;
+  String _ttsProvider = SpeechConfig.providerSystem;
+  List<Map<String, String>> _systemVoices = [];
+  String? _selectedSystemVoice;
 
   @override
   void initState() {
@@ -109,6 +116,20 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     _ttsKeyCtrl = TextEditingController(text: widget.initialTtsKey);
     _ttsModelCtrl = TextEditingController(text: widget.initialTtsModel);
     _ttsTestPassed = widget.hasTtsConfig;
+    _loadTtsProvider();
+  }
+
+  Future<void> _loadTtsProvider() async {
+    final provider = await widget.storageService.getTtsProvider();
+    final savedVoice = await widget.storageService.getTtsVoiceType();
+    final voices = widget.speechService.systemVoices;
+    if (mounted) {
+      setState(() {
+        _ttsProvider = provider;
+        _systemVoices = voices;
+        _selectedSystemVoice = savedVoice;
+      });
+    }
   }
 
   @override
@@ -181,6 +202,29 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
                 ),
               ],
             ),
+            if (widget.isFirstLaunch) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.softOrange.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.softOrange.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: AppColors.softOrange),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '请先配置大模型和语音合成服务，或选择跳过。未配置时相关功能将不可用，之后可在「我的 → API 配置」中随时设置。',
+                        style: TextStyle(fontSize: 12, color: AppColors.softOrange.withValues(alpha: 0.85), height: 1.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             // Tab bar
             Container(
@@ -315,66 +359,253 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildFieldLabel('API 地址'),
-          const SizedBox(height: 6),
-          _buildTextField(
-            controller: _ttsUrlCtrl,
-            hintText: 'https://openspeech.bytedance.com/api/v1/tts',
-            enabled: !_ttsTesting,
-            onChanged: (_) => _resetTtsTest(),
-          ),
-          const SizedBox(height: 14),
-          _buildFieldLabel('API Key / Token'),
-          const SizedBox(height: 6),
-          _buildTextField(
-            controller: _ttsKeyCtrl,
-            hintText: '请输入你的 Access Token',
-            obscureText: _ttsObscureKey,
-            enabled: !_ttsTesting,
-            onChanged: (_) => _resetTtsTest(),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _ttsObscureKey ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                size: 18,
-                color: AppColors.textHint,
+          // 提供者选择
+          _buildFieldLabel('语音引擎'),
+          const SizedBox(height: 8),
+          _buildProviderSelector(),
+          const SizedBox(height: 16),
+
+          if (_ttsProvider == SpeechConfig.providerSystem)
+            _buildSystemTtsSection()
+          else
+            _buildApiTtsSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProviderSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.textHint.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _ttsProvider = SpeechConfig.providerSystem),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _ttsProvider == SpeechConfig.providerSystem
+                      ? Theme.of(context).colorScheme.surface
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: _ttsProvider == SpeechConfig.providerSystem
+                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.phone_android, size: 14, color: _ttsProvider == SpeechConfig.providerSystem ? AppColors.calmGreen : AppColors.textHint.withValues(alpha: 0.4)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '系统默认',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: _ttsProvider == SpeechConfig.providerSystem ? FontWeight.w600 : FontWeight.normal,
+                        color: _ttsProvider == SpeechConfig.providerSystem ? AppColors.calmGreen : AppColors.textHint.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              onPressed: _ttsTesting ? null : () => setState(() => _ttsObscureKey = !_ttsObscureKey),
             ),
           ),
-          const SizedBox(height: 14),
-          _buildFieldLabel('音色名称'),
-          const SizedBox(height: 6),
-          _buildTextField(
-            controller: _ttsModelCtrl,
-            hintText: 'zh_female_vv_uranus_bigtts',
-            enabled: !_ttsTesting,
-            onChanged: (_) => _resetTtsTest(),
-          ),
-
-          if (_ttsError != null) ...[
-            const SizedBox(height: 12),
-            _buildErrorBanner(_ttsError!),
-          ] else if (widget.hasTtsConfig && !_ttsTestPassed) ...[
-            const SizedBox(height: 12),
-            _buildHintBanner(),
-          ],
-
-          const SizedBox(height: 18),
-          const Divider(height: 1),
-          const SizedBox(height: 14),
-          _buildActionRow(
-            isTesting: _ttsTesting,
-            testPassed: _ttsTestPassed,
-            hasConfig: widget.hasTtsConfig,
-            canSave: _canSaveTts,
-            testColor: AppColors.calmGreen,
-            saveColor: AppColors.gentlePurple,
-            onTest: _testTts,
-            onSave: _saveTts,
-            onReset: _resetTtsToDefault,
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _ttsProvider = SpeechConfig.providerApi),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _ttsProvider == SpeechConfig.providerApi
+                      ? Theme.of(context).colorScheme.surface
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: _ttsProvider == SpeechConfig.providerApi
+                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.cloud_outlined, size: 14, color: _ttsProvider == SpeechConfig.providerApi ? AppColors.gentlePurple : AppColors.textHint.withValues(alpha: 0.4)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '自定义 API',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: _ttsProvider == SpeechConfig.providerApi ? FontWeight.w600 : FontWeight.normal,
+                        color: _ttsProvider == SpeechConfig.providerApi ? AppColors.gentlePurple : AppColors.textHint.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSystemTtsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.calmGreen.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.calmGreen.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_outline, size: 18, color: AppColors.calmGreen),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '使用设备系统语音引擎，无需额外配置',
+                  style: TextStyle(fontSize: 12, color: AppColors.calmGreen.withValues(alpha: 0.85), height: 1.4),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_systemVoices.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildFieldLabel('系统语音选择'),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.divider),
+            ),
+            constraints: const BoxConstraints(maxHeight: 160),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(4),
+              itemCount: _systemVoices.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final voice = _systemVoices[index];
+                final name = voice['name'] ?? '';
+                final locale = voice['locale'] ?? '';
+                final isSelected = _selectedSystemVoice == name;
+                return ListTile(
+                  dense: true,
+                  selected: isSelected,
+                  selectedTileColor: AppColors.calmGreen.withValues(alpha: 0.06),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  title: Text(name, style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+                  subtitle: locale.isNotEmpty ? Text(locale, style: const TextStyle(fontSize: 11)) : null,
+                  trailing: isSelected ? const Icon(Icons.check, size: 18, color: AppColors.calmGreen) : null,
+                  onTap: () => setState(() => _selectedSystemVoice = name),
+                );
+              },
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+        const Divider(height: 1),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (widget.isFirstLaunch)
+              TextButton(
+                onPressed: _skipTtsSystem,
+                child: const Text('跳过', style: TextStyle(fontSize: 12)),
+              )
+            else
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('关闭', style: TextStyle(fontSize: 12)),
+              ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: _saveTtsSystem,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.calmGreen,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+              child: const Text('保存', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildApiTtsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFieldLabel('API 地址'),
+        const SizedBox(height: 6),
+        _buildTextField(
+          controller: _ttsUrlCtrl,
+          hintText: 'https://openspeech.bytedance.com/api/v1/tts',
+          enabled: !_ttsTesting,
+          onChanged: (_) => _resetTtsTest(),
+        ),
+        const SizedBox(height: 14),
+        _buildFieldLabel('API Key / Token'),
+        const SizedBox(height: 6),
+        _buildTextField(
+          controller: _ttsKeyCtrl,
+          hintText: '请输入你的 Access Token',
+          obscureText: _ttsObscureKey,
+          enabled: !_ttsTesting,
+          onChanged: (_) => _resetTtsTest(),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _ttsObscureKey ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              size: 18,
+              color: AppColors.textHint,
+            ),
+            onPressed: _ttsTesting ? null : () => setState(() => _ttsObscureKey = !_ttsObscureKey),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildFieldLabel('音色名称'),
+        const SizedBox(height: 6),
+        _buildTextField(
+          controller: _ttsModelCtrl,
+          hintText: 'zh_female_vv_uranus_bigtts',
+          enabled: !_ttsTesting,
+          onChanged: (_) => _resetTtsTest(),
+        ),
+
+        if (_ttsError != null) ...[
+          const SizedBox(height: 12),
+          _buildErrorBanner(_ttsError!),
+        ] else if (widget.hasTtsConfig && !_ttsTestPassed) ...[
+          const SizedBox(height: 12),
+          _buildHintBanner(),
+        ],
+
+        const SizedBox(height: 18),
+        const Divider(height: 1),
+        const SizedBox(height: 14),
+        _buildActionRow(
+          isTesting: _ttsTesting,
+          testPassed: _ttsTestPassed,
+          hasConfig: widget.hasTtsConfig,
+          canSave: _canSaveTts,
+          testColor: AppColors.calmGreen,
+          saveColor: AppColors.gentlePurple,
+          onTest: _testTts,
+          onSave: _saveTtsApi,
+          onReset: _skipTtsApi,
+        ),
+      ],
     );
   }
 
@@ -523,15 +754,22 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            TextButton(
-              onPressed: (isTesting || !hasConfig) ? null : onReset,
-              child: const Text('恢复默认', style: TextStyle(fontSize: 12)),
-            ),
-            const SizedBox(width: 4),
-            TextButton(
-              onPressed: isTesting ? null : () => Navigator.pop(context),
-              child: const Text('关闭', style: TextStyle(fontSize: 12)),
-            ),
+            if (widget.isFirstLaunch)
+              TextButton(
+                onPressed: isTesting ? null : onReset,
+                child: const Text('跳过', style: TextStyle(fontSize: 12)),
+              )
+            else ...[
+              TextButton(
+                onPressed: (isTesting || !hasConfig) ? null : onReset,
+                child: const Text('恢复默认', style: TextStyle(fontSize: 12)),
+              ),
+              const SizedBox(width: 4),
+              TextButton(
+                onPressed: isTesting ? null : () => Navigator.pop(context),
+                child: const Text('关闭', style: TextStyle(fontSize: 12)),
+              ),
+            ],
           ],
         ),
       ],
@@ -575,10 +813,17 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await widget.storageService.setLlmBaseUrl(_llmUrlCtrl.text.trim());
     await widget.storageService.setLlmApiKey(_llmKeyCtrl.text.trim());
     await widget.storageService.setLlmModel(_llmModelCtrl.text.trim());
+    await widget.storageService.setLlmConfigSubmitted(true);
     await widget.llmService.reloadConfig();
   }
 
   void _resetLlmToDefault() async {
+    if (widget.isFirstLaunch) {
+      // 跳过：标记为已提交（空配置），不保存任何值
+      await widget.storageService.setLlmConfigSubmitted(true);
+      await widget.llmService.reloadConfig();
+      return;
+    }
     await widget.storageService.clearLlmConfig();
     await widget.llmService.reloadConfig();
     setState(() {
@@ -610,7 +855,7 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
 
     _showTestingOverlay();
 
-    final (success, message) = await widget.speechService.testTtsConnection(
+    final (success, message) = await widget.speechService.testApiConnection(
       baseUrl: url, apiKey: key, model: model,
     );
 
@@ -623,17 +868,49 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     if (context.mounted) _showTestResult(success, message);
   }
 
-  void _saveTts() async {
-    await widget.storageService.setTtsBaseUrl(_ttsUrlCtrl.text.trim());
-    await widget.storageService.setTtsApiKey(_ttsKeyCtrl.text.trim());
-    await widget.storageService.setTtsModel(_ttsModelCtrl.text.trim());
+  // --- 系统 TTS 保存/跳过 ---
+
+  void _saveTtsSystem() async {
+    await widget.storageService.setTtsProvider(_ttsProvider);
+    if (_selectedSystemVoice != null) {
+      await widget.speechService.setSystemVoice(_selectedSystemVoice!);
+    }
+    await widget.storageService.setTtsConfigSubmitted(true);
     await widget.speechService.reloadTtsConfig();
   }
 
-  void _resetTtsToDefault() async {
+  void _skipTtsSystem() async {
+    await widget.storageService.setTtsProvider(_ttsProvider);
+    await widget.storageService.setTtsConfigSubmitted(true);
+    await widget.speechService.reloadTtsConfig();
+  }
+
+  // --- API TTS 保存/跳过 ---
+
+  void _saveTtsApi() async {
+    await widget.storageService.setTtsProvider(_ttsProvider);
+    await widget.storageService.setTtsBaseUrl(_ttsUrlCtrl.text.trim());
+    await widget.storageService.setTtsApiKey(_ttsKeyCtrl.text.trim());
+    await widget.storageService.setTtsModel(_ttsModelCtrl.text.trim());
+    await widget.storageService.setTtsConfigSubmitted(true);
+    await widget.speechService.reloadTtsConfig();
+  }
+
+  void _skipTtsApi() async {
+    if (widget.isFirstLaunch) {
+      // 跳过 API 配置：切换回系统默认
+      await widget.storageService.setTtsProvider(SpeechConfig.providerSystem);
+      await widget.storageService.setTtsConfigSubmitted(true);
+      await widget.speechService.reloadTtsConfig();
+      setState(() => _ttsProvider = SpeechConfig.providerSystem);
+      return;
+    }
+    // 非首次启动：清除 API 配置，恢复系统默认
     await widget.storageService.clearTtsConfig();
+    await widget.storageService.setTtsProvider(SpeechConfig.providerSystem);
     await widget.speechService.reloadTtsConfig();
     setState(() {
+      _ttsProvider = SpeechConfig.providerSystem;
       _ttsUrlCtrl.clear();
       _ttsKeyCtrl.clear();
       _ttsModelCtrl.clear();

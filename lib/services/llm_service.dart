@@ -10,27 +10,32 @@ class LlmService {
   factory LlmService() => _instance;
   LlmService._();
 
-  String _baseUrl = LlmConfig.baseUrl;
-  String _apiKey = LlmConfig.apiKey;
-  String _model = LlmConfig.model;
+  String _baseUrl = '';
+  String _apiKey = '';
+  String _model = '';
   int _maxTokens = LlmConfig.maxTokens;
   double _temperature = LlmConfig.temperature;
 
   final StorageService _storageService = StorageService();
 
-  /// 从本地存储加载用户自定义配置，未设置则使用 LlmConfig 默认值
+  /// 从本地存储加载用户自定义配置，仅在用户已提交配置时才加载
   Future<void> reloadConfig() async {
     final userUrl = await _storageService.getLlmBaseUrl();
     final userKey = await _storageService.getLlmApiKey();
     final userModel = await _storageService.getLlmModel();
 
-    _baseUrl = (userUrl != null && userUrl.isNotEmpty) ? userUrl : LlmConfig.baseUrl;
-    _apiKey = (userKey != null && userKey.isNotEmpty) ? userKey : LlmConfig.apiKey;
-    _model = (userModel != null && userModel.isNotEmpty) ? userModel : LlmConfig.model;
+    _baseUrl = (userUrl != null && userUrl.isNotEmpty) ? userUrl : '';
+    _apiKey = (userKey != null && userKey.isNotEmpty) ? userKey : '';
+    _model = (userModel != null && userModel.isNotEmpty) ? userModel : '';
     _maxTokens = LlmConfig.maxTokens;
     _temperature = LlmConfig.temperature;
 
-    developer.log('【LLM配置】baseUrl: $_baseUrl, model: $_model, apiKey: ${_apiKey.length > 6 ? '${_apiKey.substring(0, 6)}****' : '****'}');
+    developer.log('【LLM配置】baseUrl: $_baseUrl, model: $_model, configured: ${_baseUrl.isNotEmpty && _apiKey.isNotEmpty}');
+  }
+
+  /// LLM 是否已配置（用户填写了 baseUrl、apiKey 和 model）
+  bool isConfigured() {
+    return _baseUrl.isNotEmpty && _apiKey.isNotEmpty && _model.isNotEmpty;
   }
 
   /// 当前是否使用用户自定义配置

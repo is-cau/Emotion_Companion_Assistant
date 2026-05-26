@@ -10,9 +10,11 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
 
   final userSpeed = await storageService.getTtsSpeed();
   final userVolume = await storageService.getTtsVolume();
+  final userPitch = await storageService.getTtsPitch();
 
   double speed = userSpeed ?? SpeechConfig.ttsSpeed;
   double volume = userVolume ?? SpeechConfig.defaultVolume;
+  double pitch = userPitch ?? SpeechConfig.defaultPitch;
 
   if (!context.mounted) return;
   await showDialog(
@@ -55,7 +57,7 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
                   children: [
                     Text('语音参数', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
                     Text(
-                      '调节 TTS 朗读的语速与音量',
+                      '调节 TTS 朗读的语速、音量与音调',
                       style: TextStyle(fontSize: 11, color: AppColors.textHint),
                     ),
                   ],
@@ -101,6 +103,21 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
                   color: AppColors.gentlePurple,
                   onChanged: (v) => setDialogState(() => volume = v),
                 ),
+                const SizedBox(height: 20),
+
+                _buildSliderSection(
+                  icon: Icons.music_note_outlined,
+                  label: '音调',
+                  value: pitch,
+                  valueText: '${pitch.toStringAsFixed(1)}x',
+                  min: 0.5,
+                  max: 2.0,
+                  divisions: 15,
+                  minLabel: '0.5x 低沉',
+                  maxLabel: '2.0x 尖锐',
+                  color: AppColors.lightCyan,
+                  onChanged: (v) => setDialogState(() => pitch = v),
+                ),
 
                 const SizedBox(height: 24),
                 const Divider(height: 1),
@@ -113,10 +130,12 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
                       onPressed: () async {
                         await storageService.setTtsSpeed(SpeechConfig.ttsSpeed);
                         await storageService.setTtsVolume(SpeechConfig.defaultVolume);
+                        await storageService.setTtsPitch(SpeechConfig.defaultPitch);
                         await speechService.reloadTtsConfig();
                         setDialogState(() {
                           speed = SpeechConfig.ttsSpeed;
                           volume = SpeechConfig.defaultVolume;
+                          pitch = SpeechConfig.defaultPitch;
                         });
                       },
                       child: const Text('恢复默认', style: TextStyle(fontSize: 12)),
@@ -131,6 +150,7 @@ Future<void> showSpeechParamsDialog(BuildContext context) async {
                       onPressed: () async {
                         await storageService.setTtsSpeed(speed);
                         await storageService.setTtsVolume(volume);
+                        await storageService.setTtsPitch(pitch);
                         await speechService.reloadTtsConfig();
                         if (ctx.mounted) Navigator.pop(ctx);
                       },

@@ -1,6 +1,5 @@
 /// 大模型 API 配置
 /// 请通过应用内「API 配置」对话框填写你的 OpenAI 格式 API 信息
-/// 或直接修改下方常量（不推荐，建议使用应用内配置）
 class LlmConfig {
   /// API 基础地址（如 https://api.openai.com/v1 或其他兼容地址）
   static const String baseUrl = '';
@@ -8,7 +7,7 @@ class LlmConfig {
   /// API Key
   static const String apiKey = '';
 
-  /// 模型名称（如 gpt-3.5-turbo、deepseek-chat 等）
+  /// 模型名称（如 gpt-3.5-turbo、qwen-turbo 等）
   static const String model = '';
 
   /// 最大回复长度
