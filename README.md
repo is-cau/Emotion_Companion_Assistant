@@ -64,8 +64,8 @@
 
 | 层级 | 技术 |
 |------|------|
-| 框架 | Flutter 3.41 |
-| 语言 | Dart（SDK ^3.11.5） |
+| 框架 | Flutter 3.38.5 |
+| 语言 | Dart（SDK ^3.10.4） |
 | UI | Material 3 + 莫兰迪低饱和度配色 + 明暗双主题 |
 | 状态管理 | GetX + GlobalKey（跨页同步） |
 | HTTP | http ^1.6.0（OpenAI 兼容格式 API） |
@@ -115,6 +115,7 @@ lib/
 │   ├── ai_comfort_service.dart         # 本地预设安慰话术（降级备选）
 │   ├── speech_service.dart             # 语音服务（系统 TTS + 火山方舟 API TTS）
 │   ├── storage_service.dart            # 本地存储（Hive 多 Box）
+│   ├── hive_adapters.dart              # Hive 类型适配器注册
 │   └── icon_service.dart               # Android 动态图标切换
 └── models/
     └── emotion_models.dart             # 数据模型
@@ -124,8 +125,8 @@ lib/
 
 ### 1. 环境要求
 
-- Flutter SDK 3.41+
-- Dart SDK 3.11.5+
+- Flutter SDK 3.38.5+
+- Dart SDK 3.10.4+
 
 ### 2. 克隆项目
 

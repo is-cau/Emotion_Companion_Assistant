@@ -47,6 +47,9 @@ __pycache__/
 # Hive generated files
 *.hive.dart
 
+# FVM (Flutter Version Management)
+.fvm/
+
 # Claude Code
 .claude/
 
@@ -55,6 +58,16 @@ __pycache__/
 
 # Development
 DEVELOPMENT_PLAN.md
+
+# Backup files
+*.bak
+
+# Test artifacts
+/test/**/failures/
+/test/**/goldens/
+
+# Dependencies overrides
+/pubspec_overrides.yaml
 
 # Symbolication related
 app.*.symbols

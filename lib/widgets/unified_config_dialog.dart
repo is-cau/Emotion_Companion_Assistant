@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app/config/speech_config.dart';
 import '../app/themes/app_colors.dart';
 import '../services/llm_service.dart';
 import '../services/speech_service.dart';
@@ -815,13 +816,15 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await widget.storageService.setLlmModel(_llmModelCtrl.text.trim());
     await widget.storageService.setLlmConfigSubmitted(true);
     await widget.llmService.reloadConfig();
+    if (widget.isFirstLaunch) _tabController.animateTo(1);
   }
 
   void _resetLlmToDefault() async {
     if (widget.isFirstLaunch) {
-      // 跳过：标记为已提交（空配置），不保存任何值
+      // 跳过：标记为已提交（空配置），不保存任何值，切换到语音合成 Tab
       await widget.storageService.setLlmConfigSubmitted(true);
       await widget.llmService.reloadConfig();
+      _tabController.animateTo(1);
       return;
     }
     await widget.storageService.clearLlmConfig();
@@ -877,12 +880,14 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     }
     await widget.storageService.setTtsConfigSubmitted(true);
     await widget.speechService.reloadTtsConfig();
+    if (widget.isFirstLaunch && mounted) Navigator.of(context).pop();
   }
 
   void _skipTtsSystem() async {
     await widget.storageService.setTtsProvider(_ttsProvider);
     await widget.storageService.setTtsConfigSubmitted(true);
     await widget.speechService.reloadTtsConfig();
+    if (mounted) Navigator.of(context).pop();
   }
 
   // --- API TTS 保存/跳过 ---
@@ -894,15 +899,17 @@ class _UnifiedConfigDialogState extends State<_UnifiedConfigDialog>
     await widget.storageService.setTtsModel(_ttsModelCtrl.text.trim());
     await widget.storageService.setTtsConfigSubmitted(true);
     await widget.speechService.reloadTtsConfig();
+    if (widget.isFirstLaunch && mounted) Navigator.of(context).pop();
   }
 
   void _skipTtsApi() async {
     if (widget.isFirstLaunch) {
-      // 跳过 API 配置：切换回系统默认
+      // 跳过 API 配置：切换回系统默认，关闭对话框
       await widget.storageService.setTtsProvider(SpeechConfig.providerSystem);
       await widget.storageService.setTtsConfigSubmitted(true);
       await widget.speechService.reloadTtsConfig();
       setState(() => _ttsProvider = SpeechConfig.providerSystem);
+      if (mounted) Navigator.of(context).pop();
       return;
     }
     // 非首次启动：清除 API 配置，恢复系统默认
