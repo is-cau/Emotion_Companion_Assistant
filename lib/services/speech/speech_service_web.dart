@@ -5,48 +5,16 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 import 'dart:ui' show VoidCallback;
 import 'package:http/http.dart' as http;
+import 'package:web/web.dart';
 import '../../app/config/speech_config.dart';
 import '../storage_service.dart';
 
 // ============================================================
-// Web Speech API JS interop (Wasm-compatible)
+// SpeechService — Web implementation using package:web
 // ============================================================
-
-@JS('window.speechSynthesis')
-external SpeechSynthesisJS get _speechSynthesis;
-
-@JS('SpeechSynthesisUtterance')
-external SpeechSynthesisUtteranceJS _createUtterance(String text);
-
-extension type SpeechSynthesisJS(JSObject _) implements JSObject {
-  external bool get speaking;
-  external bool get paused;
-  external void cancel();
-  external void speak(SpeechSynthesisUtteranceJS utterance);
-  external JSArray<SpeechSynthesisVoiceJS> getVoices();
-  external set onvoiceschanged(JSFunction callback);
-}
-
-extension type SpeechSynthesisUtteranceJS(JSObject _) implements JSObject {
-  external set text(String value);
-  external set lang(String value);
-  external set rate(double value);
-  external set pitch(double value);
-  external set volume(double value);
-  external set voice(SpeechSynthesisVoiceJS voice);
-  external set onend(JSFunction callback);
-  external set onerror(JSFunction callback);
-}
-
-extension type SpeechSynthesisVoiceJS(JSObject _) implements JSObject {
-  external String get name;
-  external String get lang;
-  external bool get default_;
-}
-
-// ============================================================
-// SpeechService — Web implementation
-// ============================================================
+// Uses package:web's typed Speech API bindings (speech_api.dart).
+// external factory constructors correctly emit `new` in dart2wasm,
+// unlike raw @JS() top-level functions which omit `new`.
 
 class SpeechService {
   static final SpeechService _instance = SpeechService._();
@@ -71,6 +39,8 @@ class SpeechService {
 
   VoidCallback? _onComplete;
   bool _voicesLoaded = false;
+
+  SpeechSynthesis get _synth => window.speechSynthesis;
 
   Future<void> reloadTtsConfig() async {
     final savedProvider = await _storageService.getTtsProvider();
@@ -117,7 +87,7 @@ class SpeechService {
 
   Future<void> _fetchVoices() async {
     try {
-      final raw = _speechSynthesis.getVoices().toDart;
+      final raw = _synth.getVoices().toDart;
       if (raw.isNotEmpty) {
         _parseVoices(raw);
         _voicesLoaded = true;
@@ -130,9 +100,9 @@ class SpeechService {
     // Chrome loads voices asynchronously; listen for voiceschanged event
     if (!_voicesLoaded) {
       final completer = Completer<void>();
-      _speechSynthesis.onvoiceschanged = (() {
+      _synth.onvoiceschanged = ((JSObject _) {
         try {
-          _parseVoices(_speechSynthesis.getVoices().toDart);
+          _parseVoices(_synth.getVoices().toDart);
           _voicesLoaded = true;
           developer.log('【Web-TTS】异步加载 ${_systemVoices.length} 个语音');
         } catch (_) {}
@@ -147,7 +117,7 @@ class SpeechService {
     }
   }
 
-  void _parseVoices(List<SpeechSynthesisVoiceJS> raw) {
+  void _parseVoices(List<SpeechSynthesisVoice> raw) {
     final parsed = <Map<String, String>>[];
     for (final voice in raw) {
       final name = voice.name;
@@ -217,7 +187,7 @@ class SpeechService {
   Future<void> stop() async {
     if (_provider == SpeechConfig.providerSystem) {
       try {
-        _speechSynthesis.cancel();
+        _synth.cancel();
       } catch (_) {}
     }
   }
@@ -243,9 +213,10 @@ class SpeechService {
     }
 
     try {
-      _speechSynthesis.cancel();
+      _synth.cancel();
 
-      final utterance = _createUtterance(text);
+      final utterance = SpeechSynthesisUtterance();
+      utterance.text = text;
       utterance.lang = 'zh-CN';
       utterance.rate = _speed.clamp(0.1, 10.0);
       utterance.pitch = _pitch.clamp(0.0, 2.0);
@@ -254,7 +225,7 @@ class SpeechService {
       // Apply saved voice preference
       if (_systemVoiceName != null && _systemVoiceName!.isNotEmpty) {
         try {
-          final voices = _speechSynthesis.getVoices().toDart;
+          final voices = _synth.getVoices().toDart;
           for (final voice in voices) {
             if (voice.name == _systemVoiceName) {
               utterance.voice = voice;
@@ -265,7 +236,7 @@ class SpeechService {
       }
 
       final completer = Completer<void>();
-      utterance.onend = (() {
+      utterance.onend = ((JSObject _) {
         developer.log('【Web-TTS】播放完成');
         _onComplete?.call();
         if (!completer.isCompleted) completer.complete();
@@ -275,7 +246,7 @@ class SpeechService {
         if (!completer.isCompleted) completer.complete();
       }).toJS;
 
-      _speechSynthesis.speak(utterance);
+      _synth.speak(utterance);
       return true;
     } catch (e) {
       developer.log('【Web-TTS】朗读失败: $e');
@@ -480,7 +451,7 @@ class SpeechService {
 
   void dispose() {
     try {
-      _speechSynthesis.cancel();
+      _synth.cancel();
     } catch (_) {}
   }
 }
