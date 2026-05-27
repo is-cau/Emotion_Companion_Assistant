@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import '../models/emotion_models.dart';
 
 class EmotionRecordAdapter extends TypeAdapter<EmotionRecord> {

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:crypto/crypto.dart';
 import '../models/emotion_models.dart';
 import '../app/config/speech_config.dart';

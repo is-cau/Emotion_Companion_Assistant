@@ -501,10 +501,10 @@ class _ComfortPageState extends State<ComfortPage> {
         });
       }
     } else {
-      // API TTS：合成到文件再播放
-      final audioPath = await _speechService.synthesizeToFile(plainText);
-      if (audioPath != null && mounted) {
-        await _ttsPlayer.play(DeviceFileSource(audioPath));
+      // API TTS：合成音频，使用内存字节播放
+      final audioBytes = await _speechService.synthesizeToBytes(plainText);
+      if (audioBytes != null && mounted) {
+        await _ttsPlayer.play(BytesSource(audioBytes));
         _ttsPlayer.onPlayerComplete.listen((_) {
           if (mounted) setState(() => _playingMessageIndex = null);
         });

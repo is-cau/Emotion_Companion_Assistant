@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../app/config/llm_config.dart';
 import 'storage_service.dart';
@@ -118,15 +117,12 @@ class LlmService {
         }
         return 'API调用失败（状态码: ${response.statusCode}）\n错误信息: $errorDetail';
       }
-    } on SocketException catch (e) {
-      developer.log('【LLM错误】网络异常: $e');
-      return '网络连接失败: $e。请检查网络或API地址是否正确。';
-    } on HttpException catch (e) {
-      developer.log('【LLM错误】HTTP异常: $e');
-      return 'HTTP请求异常: $e。请检查 baseUrl 配置。';
     } on FormatException catch (e) {
       developer.log('【LLM错误】格式异常: $e');
       return '响应解析失败: $e。请确认API为OpenAI兼容格式。';
+    } on Exception catch (e) {
+      developer.log('【LLM错误】网络异常: $e');
+      return '网络连接失败: $e。请检查网络或API地址是否正确。';
     } catch (e) {
       developer.log('【LLM错误】未知异常: $e');
       return '发生未知错误: $e';
@@ -476,12 +472,10 @@ class LlmService {
         }
         return (false, '连接失败 (状态码: ${response.statusCode})\n$errorDetail');
       }
-    } on SocketException catch (e) {
-      return (false, '网络连接失败，请检查 API 地址是否正确\n$e');
-    } on HttpException catch (e) {
-      return (false, 'HTTP 请求异常，请检查 API 地址格式\n$e');
     } on FormatException {
       return (false, '响应格式异常，请确认 API 为 OpenAI 兼容格式');
+    } on Exception catch (e) {
+      return (false, '网络连接失败，请检查 API 地址是否正确\n$e');
     } catch (e) {
       if (e.toString().contains('TimeoutException')) {
         return (false, '连接超时，请检查网络或 API 地址');

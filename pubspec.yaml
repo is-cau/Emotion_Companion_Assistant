@@ -11,8 +11,9 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   get: ^4.6.6
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
+  hive_ce: ^2.10.1
+  hive_ce_flutter: ^2.2.0
+  web: ^1.1.0
   fl_chart: ^0.69.0
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10
@@ -28,7 +29,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  hive_generator: ^2.0.1
+  hive_ce_generator: ^1.8.1
   build_runner: ^2.4.13
 
 flutter:

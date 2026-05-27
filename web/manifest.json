@@ -1,11 +1,11 @@
 {
-    "name": "emotion_companion",
-    "short_name": "emotion_companion",
+    "name": "抱抱情绪云",
+    "short_name": "情绪云",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "治愈系心理健康情绪陪伴APP",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
