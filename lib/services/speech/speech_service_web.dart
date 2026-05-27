@@ -147,16 +147,14 @@ class SpeechService {
     }
   }
 
-  void _parseVoices(List<JSAny?> raw) {
+  void _parseVoices(List<SpeechSynthesisVoiceJS> raw) {
     final parsed = <Map<String, String>>[];
-    for (final item in raw) {
-      if (item is SpeechSynthesisVoiceJS) {
-        final name = item.name;
-        final locale = item.lang;
-        if (name.isNotEmpty) {
-          parsed.add({'name': name, 'locale': locale});
-          developer.log('【Web-TTS】语音: $name ($locale)');
-        }
+    for (final voice in raw) {
+      final name = voice.name;
+      final locale = voice.lang;
+      if (name.isNotEmpty) {
+        parsed.add({'name': name, 'locale': locale});
+        developer.log('【Web-TTS】语音: $name ($locale)');
       }
     }
     _systemVoices = parsed;
@@ -257,9 +255,9 @@ class SpeechService {
       if (_systemVoiceName != null && _systemVoiceName!.isNotEmpty) {
         try {
           final voices = _speechSynthesis.getVoices().toDart;
-          for (final v in voices) {
-            if (v is SpeechSynthesisVoiceJS && v.name == _systemVoiceName) {
-              utterance.voice = v;
+          for (final voice in voices) {
+            if (voice.name == _systemVoiceName) {
+              utterance.voice = voice;
               break;
             }
           }
