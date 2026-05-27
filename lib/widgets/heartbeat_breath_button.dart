@@ -90,7 +90,7 @@ class _HeartbeatBreathButtonState extends State<HeartbeatBreathButton>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.favorite, color: Colors.white, size: 36),
+              const Icon(Icons.favorite, color: AppColors.morandiRed, size: 36),
               const SizedBox(height: 8),
               Text(
                 '开始情绪倾诉',
