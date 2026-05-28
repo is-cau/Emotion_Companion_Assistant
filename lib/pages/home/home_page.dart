@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/themes/app_colors.dart';
+import '../../app/responsive/adaptive_content_wrapper.dart';
 import '../../services/emotion_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
@@ -247,9 +248,10 @@ class HomePageState extends State<HomePage> {
           ),
         ),
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              // ===== SliverAppBar =====
+          child: AdaptiveContentWrapper(
+            child: CustomScrollView(
+              slivers: [
+                // ===== SliverAppBar =====
               SliverAppBar(
                 pinned: true,
                 title: Text(
@@ -309,6 +311,7 @@ class HomePageState extends State<HomePage> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

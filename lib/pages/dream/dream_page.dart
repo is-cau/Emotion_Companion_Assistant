@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import '../../app/themes/app_colors.dart';
+import '../../app/responsive/adaptive_content_wrapper.dart';
 import '../../models/emotion_models.dart';
 import '../../services/llm_service.dart';
 import '../../services/storage_service.dart';
@@ -249,7 +250,8 @@ class _DreamPageState extends State<DreamPage> {
           ),
         ),
         child: SafeArea(
-          child: CustomScrollView(
+          child: AdaptiveContentWrapper(
+            child: CustomScrollView(
             controller: _scrollController,
             slivers: [
               _buildSliverHeader(),
@@ -272,6 +274,7 @@ class _DreamPageState extends State<DreamPage> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

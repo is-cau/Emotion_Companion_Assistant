@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/themes/app_colors.dart';
+import '../../app/responsive/adaptive_content_wrapper.dart';
 import '../../app/app_controller.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/unified_config_dialog.dart';
@@ -64,8 +65,9 @@ class PrivacyPageState extends State<PrivacyPage> {
             colors: gradientColors,
           ),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(top: 12, bottom: 32),
+        child: AdaptiveContentWrapper(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 12, bottom: 32),
           child: Column(
             children: [
               _buildSecurityStatusCard(),
@@ -80,6 +82,7 @@ class PrivacyPageState extends State<PrivacyPage> {
               const SizedBox(height: 16),
             ],
           ),
+        ),
         ),
       ),
     );

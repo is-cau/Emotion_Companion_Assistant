@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/themes/app_colors.dart';
+import '../../app/responsive/adaptive_content_wrapper.dart';
 import '../../services/storage_service.dart';
 import '../../models/emotion_models.dart';
 import '../../widgets/emotion_radar.dart';
@@ -63,9 +64,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
           ),
         ),
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              _buildSliverHeader(),
+          child: AdaptiveContentWrapper(
+            child: CustomScrollView(
+              slivers: [
+                _buildSliverHeader(),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -94,6 +96,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

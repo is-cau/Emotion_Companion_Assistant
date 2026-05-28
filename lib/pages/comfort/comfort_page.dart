@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../app/themes/app_colors.dart';
+import '../../app/responsive/responsive_utils.dart';
 import '../../app/config/speech_config.dart';
 import '../../services/emotion_service.dart';
 import '../../services/llm_service.dart';
@@ -530,6 +531,13 @@ class _ComfortPageState extends State<ComfortPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (ResponsiveUtils.isDesktop(context)) {
+      return _buildDesktopChatLayout();
+    }
+    return _buildMobileChatLayout();
+  }
+
+  Widget _buildMobileChatLayout() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final gradientColors = isDark
         ? [AppColors.softPink.withValues(alpha: 0.06), AppColors.darkBackground]
@@ -578,23 +586,91 @@ class _ComfortPageState extends State<ComfortPage> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  Widget _buildDesktopChatLayout() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDark
+        ? [AppColors.softPink.withValues(alpha: 0.06), AppColors.darkBackground]
+        : [AppColors.softPink.withValues(alpha: 0.04), AppColors.background];
+
+    final showWelcomeCard = _messages.isEmpty;
+
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: _buildAppBar(showMenuButton: false),
+      body: Row(
+        children: [
+          Container(
+            width: 280,
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(
+                  color: AppColors.hazeBlue.withValues(alpha: 0.08),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: _buildConversationPanel(),
+          ),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: gradientColors,
+                ),
+              ),
+              child: Column(
+                children: [
+                  _buildEmotionStatusBar(),
+                  Expanded(
+                    child: showWelcomeCard
+                        ? _buildWelcomeCard()
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              final showDivider = index > 0 &&
+                                  _messages[index].isUser != _messages[index - 1].isUser;
+                              return Column(
+                                children: [
+                                  if (showDivider) _buildMessageGroupDivider(),
+                                  _buildMessage(_messages[index], index),
+                                ],
+                              );
+                            },
+                          ),
+                  ),
+                  _buildInputArea(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar({bool showMenuButton = true}) {
     final hasEmotion = _currentEmotion != '平静';
     final themeColor = hasEmotion ? AppColors.softPink : AppColors.hazeBlue;
 
     return AppBar(
-      leading: Container(
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: themeColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: IconButton(
-          icon: Icon(Icons.menu, size: 20, color: themeColor),
-          onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
-          tooltip: '对话记录',
-        ),
-      ),
+      leading: showMenuButton
+          ? Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: themeColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.menu, size: 20, color: themeColor),
+                onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                tooltip: '对话记录',
+              ),
+            )
+          : null,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -1294,23 +1370,29 @@ class _ComfortPageState extends State<ComfortPage> {
   }
 
   // ============================================================
-  // 侧边抽屉
+  // 侧边抽屉 / 桌面端对话列表面板
   // ============================================================
 
   Widget _buildEndDrawer() {
     return Drawer(
       width: 280,
       child: SafeArea(
-        child: Column(
-          children: [
-            // 标题栏
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.divider, width: 0.5),
-                ),
-              ),
+        child: _buildConversationPanel(),
+      ),
+    );
+  }
+
+  Widget _buildConversationPanel() {
+    return Column(
+      children: [
+        // 标题栏
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppColors.divider, width: 0.5),
+            ),
+          ),
               child: Row(
                 children: [
                   // 左侧强调条
@@ -1429,9 +1511,7 @@ class _ComfortPageState extends State<ComfortPage> {
                     ),
             ),
           ],
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildDrawerEmptyState() {

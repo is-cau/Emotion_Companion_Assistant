@@ -13,6 +13,8 @@ import 'services/hive_adapters.dart';
 import 'services/llm_service.dart';
 import 'services/speech_service.dart';
 import 'services/storage_service.dart';
+import 'app/responsive/responsive_utils.dart';
+import 'app/responsive/desktop_sidebar.dart';
 import 'widgets/app_splash.dart';
 import 'widgets/unified_config_dialog.dart';
 
@@ -127,6 +129,17 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= ResponsiveUtils.tabletBreakpoint) {
+          return _buildDesktopLayout();
+        }
+        return _buildMobileLayout();
+      },
+    );
+  }
+
+  Widget _buildMobileLayout() {
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -157,6 +170,31 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Scaffold(
+      body: Row(
+        children: [
+          DesktopSidebar(
+            currentIndex: _currentIndex,
+            onTabChanged: _onTabChanged,
+          ),
+          Container(
+            width: 1,
+            color: AppColors.hazeBlue.withValues(alpha: 0.08),
+          ),
+          Expanded(
+            child: SafeArea(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _pages,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

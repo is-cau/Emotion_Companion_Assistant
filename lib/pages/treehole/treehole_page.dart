@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../app/themes/app_colors.dart';
+import '../../app/responsive/adaptive_content_wrapper.dart';
 import '../../services/emotion_service.dart';
 import '../../services/llm_service.dart';
 import '../../services/storage_service.dart';
@@ -235,7 +236,8 @@ class TreeholePageState extends State<TreeholePage> {
           ),
         ),
         child: SafeArea(
-          child: CustomScrollView(
+          child: AdaptiveContentWrapper(
+            child: CustomScrollView(
             slivers: [
               _buildSliverHeader(),
               SliverToBoxAdapter(
@@ -257,6 +259,7 @@ class TreeholePageState extends State<TreeholePage> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),
