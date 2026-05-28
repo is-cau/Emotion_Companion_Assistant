@@ -50,6 +50,10 @@ __pycache__/
 # FVM (Flutter Version Management)
 .fvm/
 
+# Screenshot tooling
+node_modules/
+package-lock.json
+
 # Claude Code
 .claude/
 

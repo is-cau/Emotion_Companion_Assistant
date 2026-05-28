@@ -62,6 +62,8 @@
 
 ## 界面预览
 
+### 手机端
+
 > 截图存放于 `assets/screenshots/`
 
 <table>
@@ -97,13 +99,54 @@
 </tr>
 </table>
 
+### 桌面端
+
+> 自动检测屏幕宽度，≥900px 切换为桌面布局：左侧导航侧边栏 + 内容居中约束（最大 1200px）
+>
+> 截图存放于 `assets/screenshots/desktop/`
+
+<table>
+<tr>
+  <td width="50%"><b>首页</b> — 左侧导航栏、内容居中、宽屏卡片布局</td>
+  <td width="50%"><b>情绪树洞</b> — 居中单列、白噪音切换、密码锁定</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/desktop/home.png" width="100%"></td>
+  <td><img src="assets/screenshots/desktop/treehole.png" width="100%"></td>
+</tr>
+<tr>
+  <td><b>AI 暖心安慰</b> — 对话列表面板可收起、聊天区自适应</td>
+  <td><b>AI 暖心安慰 · 面板展开</b> — 点击菜单按钮展开对话记录侧边面板</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/desktop/comfort.png" width="100%"></td>
+  <td><img src="assets/screenshots/desktop/comfort_panel.png" width="100%"></td>
+</tr>
+<tr>
+  <td><b>AI 梦境解读</b> — 全屏页面、内容居中 1200px</td>
+  <td><b>情绪分析报告</b> — 七维雷达图、趋势图表、宽屏优化</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/desktop/dream.png" width="100%"></td>
+  <td><img src="assets/screenshots/desktop/analysis.png" width="100%"></td>
+</tr>
+<tr>
+  <td><b>隐私中心</b> — 设置项居中、卡片式布局</td>
+  <td><b>API 配置</b> — 大模型 + 语音合成双引擎</td>
+</tr>
+<tr>
+  <td><img src="assets/screenshots/desktop/privacy.png" width="100%"></td>
+  <td><img src="assets/screenshots/desktop/config.png" width="100%"></td>
+</tr>
+</table>
+
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
 | 框架 | Flutter 3.38.5 |
 | 语言 | Dart（SDK ^3.10.4） |
-| UI | Material 3 + 莫兰迪低饱和度配色 + 明暗双主题 |
+| UI | Material 3 + 莫兰迪低饱和度配色 + 明暗双主题 + 响应式桌面端适配 |
 | 状态管理 | GetX + GlobalKey（跨页同步） |
 | HTTP | http ^1.6.0（OpenAI 兼容格式 API） |
 | 本地存储 | Hive + SharedPreferences + MD5 密码加密 |
@@ -121,7 +164,7 @@
 
 ```
 lib/
-├── main.dart                           # 入口 + 底部导航 + 首次启动配置检查
+├── main.dart                           # 入口 + 响应式导航（桌面端侧边栏 / 移动端底部导航） + 首次启动配置检查
 ├── app/
 │   ├── config/
 │   │   ├── llm_config.dart             # 大模型 API 配置（空默认值，通过应用内配置）
@@ -130,7 +173,11 @@ lib/
 │   ├── themes/
 │   │   ├── app_colors.dart             # 莫兰迪配色定义（含暗色令牌）
 │   │   └── app_theme.dart              # 明/暗双主题
-│   └── app_controller.dart             # GetX 全局状态（主题切换）
+│   ├── responsive/
+│   │   ├── responsive_utils.dart       # 响应式断点工具（≥900px 桌面端）
+│   │   ├── desktop_sidebar.dart        # 桌面端左侧导航侧边栏
+│   │   └── adaptive_content_wrapper.dart # 自适应内容居中包装器
+│   └── app_controller.dart             # GetX 全局状态（主题切换、桌面图标）
 ├── pages/
 │   ├── home/home_page.dart             # 首页
 │   ├── treehole/treehole_page.dart     # 情绪树洞

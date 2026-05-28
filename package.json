@@ -1,0 +1,28 @@
+{
+  "name": "emotion_companion_assistant",
+  "version": "1.0.0",
+  "description": "一款轻量化治愈系心理健康情绪陪伴 Flutter 应用。",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qushengxixiaoluo/Emotion_Companion_Assistant.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/qushengxixiaoluo/Emotion_Companion_Assistant/issues"
+  },
+  "homepage": "https://github.com/qushengxixiaoluo/Emotion_Companion_Assistant#readme",
+  "dependencies": {
+    "playwright": "^1.60.0"
+  }
+}

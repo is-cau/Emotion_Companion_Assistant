@@ -18,10 +18,10 @@ class ComfortPage extends StatefulWidget {
   const ComfortPage({super.key});
 
   @override
-  State<ComfortPage> createState() => _ComfortPageState();
+  State<ComfortPage> createState() => ComfortPageState();
 }
 
-class _ComfortPageState extends State<ComfortPage> {
+class ComfortPageState extends State<ComfortPage> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final EmotionService _emotionService = EmotionService();
@@ -53,6 +53,11 @@ class _ComfortPageState extends State<ComfortPage> {
   Conversation? _currentConversation;
   bool _titleGenerated = false;
   bool _showConversationPanel = false;
+
+  /// Toggle the conversation panel visibility (used for desktop screenshots).
+  void toggleConversationPanel() {
+    setState(() => _showConversationPanel = !_showConversationPanel);
+  }
 
   @override
   void initState() {
