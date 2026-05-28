@@ -52,6 +52,7 @@ class _ComfortPageState extends State<ComfortPage> {
   List<Conversation> _conversations = [];
   Conversation? _currentConversation;
   bool _titleGenerated = false;
+  bool _showConversationPanel = false;
 
   @override
   void initState() {
@@ -596,21 +597,25 @@ class _ComfortPageState extends State<ComfortPage> {
 
     return Scaffold(
       key: _scaffoldKey,
-      appBar: _buildAppBar(showMenuButton: false),
+      appBar: _buildAppBar(
+        onMenuTap: () => setState(() => _showConversationPanel = !_showConversationPanel),
+      ),
       body: Row(
         children: [
-          Container(
-            width: 280,
-            decoration: BoxDecoration(
-              border: Border(
-                right: BorderSide(
-                  color: AppColors.hazeBlue.withValues(alpha: 0.08),
-                  width: 1,
+          if (_showConversationPanel) ...[
+            Container(
+              width: 280,
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(
+                    color: AppColors.hazeBlue.withValues(alpha: 0.08),
+                    width: 1,
+                  ),
                 ),
               ),
+              child: _buildConversationPanel(),
             ),
-            child: _buildConversationPanel(),
-          ),
+          ],
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -652,7 +657,7 @@ class _ComfortPageState extends State<ComfortPage> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar({bool showMenuButton = true}) {
+  PreferredSizeWidget _buildAppBar({bool showMenuButton = true, VoidCallback? onMenuTap}) {
     final hasEmotion = _currentEmotion != '平静';
     final themeColor = hasEmotion ? AppColors.softPink : AppColors.hazeBlue;
 
@@ -665,8 +670,8 @@ class _ComfortPageState extends State<ComfortPage> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: IconButton(
-                icon: Icon(Icons.menu, size: 20, color: themeColor),
-                onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                icon: Icon(_showConversationPanel ? Icons.menu_open : Icons.menu, size: 20, color: themeColor),
+                onPressed: onMenuTap ?? () => _scaffoldKey.currentState?.openEndDrawer(),
                 tooltip: '对话记录',
               ),
             )
@@ -1560,12 +1565,14 @@ class _ComfortPageState extends State<ComfortPage> {
     _messages.clear();
     _addWelcomeMessage();
     await _storageService.setActiveConversationId(null);
+    _showConversationPanel = false;
     setState(() {});
   }
 
   Future<void> _switchConversation(Conversation conv) async {
     if (_currentConversation?.id == conv.id) {
       _scaffoldKey.currentState?.closeEndDrawer();
+      _showConversationPanel = false;
       return;
     }
     await _saveCurrentConversation();
@@ -1575,6 +1582,7 @@ class _ComfortPageState extends State<ComfortPage> {
     _restoreMessages();
     await _storageService.setActiveConversationId(conv.id);
     _scaffoldKey.currentState?.closeEndDrawer();
+    _showConversationPanel = false;
     setState(() {});
   }
 
