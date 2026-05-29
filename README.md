@@ -4,6 +4,10 @@
 
 **核心功能：** 情绪分析 · 匿名树洞倾诉 · AI 暖心安慰 · AI 梦境解读 · 语音朗读
 
+# 在线体验链接
+
+## [点击体验](https://is-cau.github.io/Emotion_Companion_Assistant/)
+
 ## 功能特性
 
 ### 首页
